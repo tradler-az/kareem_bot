@@ -1,0 +1,33 @@
+{
+  "name": "Kareem OS",
+  "version": "2.0.0",
+  "ai_name": "Kareem",
+  "groq_api_key": "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",
+  "voice": {
+    "enabled": true,
+    "rate": 180,
+    "pitch": 0.9,
+    "voice_type": "juice_wrld"
+  },
+  "personality": {
+    "style": "juice_wrld",
+    "traits": ["melodic", "dark", "auto_tuned", "emotional"]
+  },
+  "features": {
+    "wake_word": true,
+    "continuous_listening": true,
+    "full_pc_control": true,
+    "nlp": true,
+    "real_time_analysis": true,
+    "deep_integration": true
+  },
+  "pc_control": {
+    "mouse": true,
+    "keyboard": true,
+    "windows": true,
+    "applications": true,
+    "files": true,
+    "system": true,
+    "clipboard": true
+  }
+}

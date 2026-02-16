@@ -1,0 +1,69 @@
+{
+    "version": "1.0.0",
+    "name": "Bosco OS",
+    "api_keys": {
+        "groq": "",
+        "openweather": "",
+        "newsapi": "",
+        "google_search": "",
+        "huggingface": ""
+    },
+    "brain": {
+        "model": "llama-3.1-70b-versatile",
+        "temperature": 0.7,
+        "max_tokens": 2048,
+        "reasoning_enabled": true,
+        "planner_enabled": true
+    },
+    "voice": {
+        "wake_word": "hey bosco",
+        "language": "en-US",
+        "voice_rate": 170,
+        "voice_volume": 1.0,
+        "continuous_mode": false
+    },
+    "security": {
+        "auth_enabled": false,
+        "sandbox_mode": true,
+        "audit_logging": true,
+        "policy_strict": false
+    },
+    "capabilities": {
+        "system": {
+            "allow_shutdown": false,
+            "allow_restart": true,
+            "allow_sudo": false
+        },
+        "network": {
+            "allow_nmap": true,
+            "allow_netcat": true
+        },
+        "devops": {
+            "allow_docker": true,
+            "allow_git": true
+        }
+    },
+    "kali_linux": {
+        "tools_path": "/usr/bin",
+        "wordlists": "/usr/share/wordlists",
+        "tools": [
+            "nmap",
+            "hydra",
+            "msfconsole",
+            "sqlmap",
+            "nikto",
+            "gobuster",
+            "dirb",
+            "wpscan",
+            "aircrack-ng",
+            "john",
+            "hashcat",
+            "metasploit"
+        ]
+    },
+    "api": {
+        "host": "0.0.0.0",
+        "port": 5000,
+        "cors_enabled": true
+    }
+}

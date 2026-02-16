@@ -1,0 +1,12 @@
+{
+  "name": "Sir",
+  "voice_speed": 200,
+  "voice_volume": 1.0,
+  "wake_word": "hey bosco",
+  "language": "en-US",
+  "theme": "blue",
+  "continuous_mode": false,
+  "sound_effects": true,
+  "notifications_enabled": true,
+  "response_verbosity": "normal"
+}

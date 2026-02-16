@@ -1,0 +1,14 @@
+[
+  {
+    "timestamp": "2026-02-16T19:50:48.999042",
+    "user": "boss",
+    "bot": "I'm currently operating in limited mode. My AI capabilities require configuration.",
+    "intent": ""
+  },
+  {
+    "timestamp": "2026-02-16T19:50:56.463087",
+    "user": "+",
+    "bot": "Command not recognized. Would you like me to search for information instead?",
+    "intent": ""
+  }
+]
