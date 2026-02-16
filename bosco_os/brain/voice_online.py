@@ -1,71 +1,160 @@
 """Kareem OS - Voice & Online Services"""
 import os
+import sys
+import threading
 import warnings
-# Suppress ALSA/PulseAudio warnings for cleaner output
+
+# Suppress ALSA/PulseAudio/Jack warnings for cleaner output
+os.environ['SDL_AUDIODRIVER'] = 'dummy'
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+
+# Suppress warnings before importing audio libraries
 warnings.filterwarnings('ignore', category=DeprecationWarning)
+warnings.filterwarnings('ignore', category=UserWarning)
 
 import requests
 import json
 import subprocess
 
+# Thread lock for TTS
+_tts_lock = threading.Lock()
+
+
 class VoiceEngine:
-    """Text to speech engine with ALSA/PulseAudio handling"""
+    """Text to speech engine with proper Linux/Kali audio handling"""
     
     def __init__(self):
         self.rate = 180
+        self.volume = 1.0
         self.engine = None
         self.use_sound = True
+        self.is_speaking = False
         self._init_engine()
     
     def _init_engine(self):
-        try:
-            import pyttsx3
-            # Initialize with explicit driver to avoid ALSA issues
-            self.engine = pyttsx3.init('espeak')
-            self.engine.setProperty('rate', self.rate)
-            # Try to set a working voice
-            try:
-                voices = self.engine.getProperty('voices')
-                if voices:
-                    self.engine.setProperty('voice', voices[0].id)
-            except:
-                pass
-        except Exception as e:
-            # Fallback: try default driver
+        """Initialize TTS engine with multiple fallback options"""
+        # Try pyttsx3 with different drivers
+        drivers = ['espeak', 'nsss', 'dummy']
+        
+        for driver in drivers:
             try:
                 import pyttsx3
-                self.engine = pyttsx3.init()
+                self.engine = pyttsx3.init(driver)
                 self.engine.setProperty('rate', self.rate)
-            except Exception as e2:
-                print(f"Voice init warning: {e2}")
-                self.engine = None
+                self.engine.setProperty('volume', self.volume)
+                
+                # Try to set a good voice
+                try:
+                    voices = self.engine.getProperty('voices')
+                    if voices:
+                        # Try to find English voice
+                        for voice in voices:
+                            if 'english' in voice.name.lower():
+                                self.engine.setProperty('voice', voice.id)
+                                break
+                        else:
+                            self.engine.setProperty('voice', voices[0].id)
+                except:
+                    pass
+                    
+                print(f"TTS initialized with {driver} driver")
+                return
+            except Exception as e:
+                continue
+        
+        # If all drivers fail, use command-line fallback
+        print("pyttsx3 initialization failed, using command-line fallback")
+        self.engine = None
     
     def speak(self, text):
-        """Speak text aloud"""
-        # Just print if no sound
+        """Speak text aloud - thread-safe"""
+        if not text:
+            return
+            
+        # Print to console as fallback or when sound disabled
         if not self.use_sound:
             print(f"🔊 {text}")
             return
-            
-        if self.engine:
+        
+        with _tts_lock:
+            self.is_speaking = True
             try:
-                self.engine.stop()
-                self.engine.say(text)
-                # Use runAndWait with timeout handling
-                self.engine.runAndWait()
+                if self.engine:
+                    try:
+                        self.engine.stop()
+                        self.engine.say(text)
+                        self.engine.runAndWait()
+                    except RuntimeError as e:
+                        # Handle "run loop already started" error
+                        if "run loop" in str(e).lower():
+                            # Reinitialize engine
+                            try:
+                                self._init_engine()
+                                if self.engine:
+                                    self.engine.say(text)
+                                    self.engine.runAndWait()
+                            except:
+                                pass
+                        else:
+                            raise
+                    except Exception as e:
+                        # Fallback to command-line TTS
+                        self._fallback_speak(text)
+                else:
+                    # No engine, use fallback
+                    self._fallback_speak(text)
+            finally:
+                self.is_speaking = False
+    
+    def _fallback_speak(self, text):
+        """Command-line TTS fallback using espeak or say"""
+        try:
+            # Linux: try espeak
+            if sys.platform == 'linux' or sys.platform == 'linux2':
+                # Check if espeak is available
+                result = subprocess.run(['which', 'espeak'], 
+                                       capture_output=True, text=True)
+                if result.returncode == 0:
+                    subprocess.Popen(
+                        ['espeak', '-s', str(self.rate//30), '-a', str(int(self.volume*100)), text],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL
+                    )
+                    return
+            
+            # macOS: try say command
+            if sys.platform == 'darwin':
+                subprocess.Popen(
+                    ['say', text],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
                 return
-            except RuntimeError as e:
-                # Handle "run loop already started" error
+            
+            # Windows: try PowerShell
+            if sys.platform == 'win32':
+                subprocess.Popen(
+                    ['powershell', '-Command', f'Add-Type -AssemblyName System.Speech; $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer; $synth.Speak("{text}")'],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+                return
+                
+        except:
+            pass
+        
+        # Ultimate fallback: just print
+        print(f"🔊 {text}")
+    
+    def interrupt(self):
+        """Interrupt current speech"""
+        with _tts_lock:
+            self.is_speaking = False
+            if self.engine:
                 try:
                     self.engine.stop()
                 except:
                     pass
-            except Exception as e:
-                pass
-        
-        # Silent fallback - just print
-        print(f"🔊 {text}")
     
     def set_rate(self, rate):
         self.rate = rate
@@ -74,6 +163,23 @@ class VoiceEngine:
                 self.engine.setProperty('rate', rate)
             except:
                 pass
+    
+    def set_volume(self, volume):
+        self.volume = volume
+        if self.engine:
+            try:
+                self.engine.setProperty('volume', volume)
+            except:
+                pass
+    
+    def get_voices(self):
+        """Get available voices"""
+        if self.engine:
+            try:
+                return [(v.id, v.name) for v in self.engine.getProperty('voices')]
+            except:
+                pass
+        return []
 
 
 class OnlineServices:

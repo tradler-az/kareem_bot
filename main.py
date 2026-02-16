@@ -41,23 +41,45 @@ from bosco_os.capabilities.system.control import cpu
 voice_engine = None
 try:
     import pyttsx3
-    # Try to use espeak driver first (works without audio hardware)
-    try:
-        voice_engine = pyttsx3.init('espeak')
-    except:
-        # Fallback to default driver
-        voice_engine = pyttsx3.init()
+    # Try different drivers for Linux/Kali
+    for driver in ['espeak', 'nsss', 'dummy']:
+        try:
+            voice_engine = pyttsx3.init(driver)
+            # Test if it works
+            voice_engine.setProperty('rate', 180)
+            print(f"TTS initialized with {driver} driver")
+            break
+        except Exception as e:
+            continue
 except Exception as e:
     print(f"Warning: TTS engine not available: {e}")
 
 def speak(text):
     """Voice output"""
-    print(f"🔊 Kareem: {text}")
+    print(f"🔊 {AI_NAME}: {text}")
+    
+    # Try pyttsx3 first
     if voice_engine:
         try:
+            voice_engine.stop()
             voice_engine.say(text)
+            voice_engine.runAndWait()
+            return
         except Exception as e:
-            print(f"TTS error: {e}")
+            pass
+    
+    # Fallback to espeak command-line
+    try:
+        import subprocess
+        # Escape text for shell
+        text_escaped = text.replace('"', '\\"').replace('$', '\\$')
+        subprocess.Popen(
+            ['espeak', '-s', '120', '-a', '100', text_escaped],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+    except:
+        pass
 
 def listen():
     """Voice input"""
