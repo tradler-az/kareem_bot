@@ -6,6 +6,8 @@ Advanced voice recognition with noise handling and multiple listening modes
 import time
 import threading
 import queue
+import os
+import json
 from typing import Optional, Callable, List
 import re
 
@@ -17,6 +19,20 @@ except ImportError:
     print("speech_recognition not available")
 
 
+def load_config():
+    """Load configuration from config.json"""
+    for path in ['config.json', 'bosco_os/config.json']:
+        if os.path.exists(path):
+            with open(path) as f:
+                return json.load(f)
+    return {}
+
+
+# Load config for voice settings
+_config = load_config()
+_voice_config = _config.get('voice', {})
+
+
 class Listener:
     """Enhanced voice listener with multiple modes"""
     
@@ -26,11 +42,13 @@ class Listener:
         self.is_listening = False
         self.listen_thread = None
         
-        # Configuration
-        self.energy_threshold = 300  # Minimum audio energy to consider
-        self.pause_threshold = 0.8  # Seconds of silence to consider phrase complete
+        # Configuration - loaded from config.json with defaults
+        self.energy_threshold = _voice_config.get('energy_threshold', 300)
+        self.pause_threshold = _voice_config.get('pause_threshold', 0.8)
         self.phrase_threshold = 0.3  # Minimum seconds of speaking
-        self.phrase_time_limit = 10  # Maximum phrase length
+        self.listen_timeout = _voice_config.get('listen_timeout', 5.0)
+        self.phrase_time_limit = _voice_config.get('phrase_time_limit', 10.0)
+        self.calibration_duration = _voice_config.get('calibration_duration', 1.0)
         
         # Continuous listening
         self.continuous_queue = queue.Queue()
@@ -55,8 +73,18 @@ class Listener:
         except Exception as e:
             print(f"Microphone error: {e}")
     
-    def calibrate(self, duration: float = 1.0):
+    def set_timeouts(self, listen_timeout: float = None, phrase_time_limit: float = None):
+        """Update timeout settings dynamically"""
+        if listen_timeout is not None:
+            self.listen_timeout = listen_timeout
+        if phrase_time_limit is not None:
+            self.phrase_time_limit = phrase_time_limit
+    
+    def calibrate(self, duration: float = None):
         """Calibrate for ambient noise"""
+        if duration is None:
+            duration = self.calibration_duration
+            
         if not self.microphone or not self.recognizer:
             return
         
@@ -66,17 +94,20 @@ class Listener:
             self.energy_threshold = self.recognizer.energy_threshold
             print(f"Energy threshold set to: {self.energy_threshold}")
     
-    def listen(self, timeout: float = 5.0, phrase_time_limit: float = None) -> str:
+    def listen(self, timeout: float = None, phrase_time_limit: float = None) -> str:
         """Listen for a single phrase"""
         if not self.microphone or not self.recognizer:
             return ""
         
+        # Use provided values or defaults from config
+        if timeout is None:
+            timeout = self.listen_timeout
         if phrase_time_limit is None:
             phrase_time_limit = self.phrase_time_limit
         
         try:
             with self.microphone as source:
-                print("Listening...")
+                print(f"Listening... (timeout: {timeout}s)")
                 audio = self.recognizer.listen(
                     source,
                     timeout=timeout,

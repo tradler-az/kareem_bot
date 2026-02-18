@@ -8,7 +8,12 @@
     "enabled": true,
     "rate": 180,
     "pitch": 0.9,
-    "voice_type": "human"
+    "voice_type": "human",
+    "listen_timeout": 5.0,
+    "phrase_time_limit": 10.0,
+    "pause_threshold": 0.8,
+    "energy_threshold": 300,
+    "calibration_duration": 1.0
   },
   "personality": {
     "style": "normal_human",
@@ -23,7 +28,9 @@
     "sentiment_analysis": true,
     "predictive_analytics": true,
     "voice_input": true,
-    "voice_output": true
+    "voice_output": true,
+    "command_confirmation": true,
+    "command_logging": true
   },
   "pc_control": {
     "mouse": true,
@@ -32,13 +39,41 @@
     "applications": true,
     "files": true,
     "system": true,
-    "clipboard": true
+    "clipboard": true,
+    "whitelist_mode": false,
+    "allowed_commands": ["open", "close", "type", "click", "screenshot", "run"]
   },
   "ml_settings": {
     "learning_enabled": true,
     "learning_rate": 0.1,
     "confidence_threshold": 0.7,
     "memory_size": 1000
+  },
+  "multi_device": {
+    "enabled": false,
+    "device_id": "",
+    "device_name": "main_pc",
+    "server_port": 8765,
+    "discoverable": true,
+    "known_devices": []
+  },
+  "task_management": {
+    "enabled": true,
+    "data_file": "data/tasks.json",
+    "default_priority": "medium",
+    "reminder_before_minutes": 15
+  },
+  "perception": {
+    "enabled": true,
+    "context_window": 10,
+    "mood_tracking": true,
+    "pattern_recognition": true
+  },
+  "creativity": {
+    "enabled": true,
+    "temperature": 0.7,
+    "max_tokens": 500,
+    "response_variety": true
   }
 }
 

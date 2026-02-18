@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Bosco Core v3.0 - ML-Powered AI Assistant with Full PC Control
+Bosco Core v3.0 - ML-Powered AI Assistant with Full PC Control + Kali Linux
 CLI-based with neural brain, learning, terminal access, and web browsing
 """
 
@@ -38,7 +38,8 @@ print(f"""
 ║      ╚████╔╝ ███████╗██║  ██║   ██║   ███████╗██╔╝ ██╗    ║
 ║       ╚═══╝  ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝    ║
 ║                                                              ║
-║        ML-POWERED NEURAL BRAIN + FULL PC CONTROL            ║
+║        ML-POWERED NEURAL BRAIN + FULL PC CONTROL             ║
+║                    + KALI LINUX SUPPORT                       ║
 ║                        v{VERSION}                             ║
 ╚══════════════════════════════════════════════════════════════╝
 """)
@@ -59,6 +60,31 @@ try:
     print("[+] LLM Client loaded")
 except:
     get_llm = None
+
+# Import Kali Linux control
+try:
+    from bosco_os.capabilities.system.kali_control import get_kali_control
+    kali_control = get_kali_control()
+    print(f"[+] Kali Linux Control loaded (Kali: {kali_control.is_kali})")
+except Exception as e:
+    print(f"[-] Kali Control: {e}")
+    kali_control = None
+
+# Import Linux command handler
+try:
+    from bosco_os.brain.linux_command_handler import get_linux_handler, process_linux_command
+    print("[+] Linux Command Handler loaded")
+except Exception as e:
+    print(f"[-] Linux Handler: {e}")
+    process_linux_command = None
+
+# Import Kali personality
+try:
+    from bosco_os.brain.kali_personality import get_kali_personality
+    print("[+] Kali Personality loaded")
+except Exception as e:
+    print(f"[-] Kali Personality: {e}")
+    get_kali_personality = None
 
 # Import full system control
 try:
@@ -143,11 +169,17 @@ def listen():
 
 
 def process_command(cmd):
-    """Process commands with full system control"""
+    """Process commands with full system control + Kali Linux"""
     if not cmd:
         return "I didn't catch that."
     
     cmd = cmd.lower().strip()
+    
+    # First, try Linux command handler for system commands
+    if process_linux_command:
+        linux_result, linux_conf = process_linux_command(cmd)
+        if linux_conf > 0.5:
+            return linux_result
     
     # Use neural brain for intent
     if get_brain:
@@ -178,6 +210,9 @@ def process_command(cmd):
         if 'run' in cmd or 'execute' in cmd:
             command = cmd.replace('run', '').replace('execute', '').strip()
             if command:
+                # Check if it's a Linux command
+                if kali_control:
+                    return kali_control.execute_command(command)
                 return run_command(command)
         
         if 'terminal' in cmd or 'cmd' in cmd:
@@ -187,9 +222,13 @@ def process_command(cmd):
             return screenshot()
         
         if 'system info' in cmd or 'check system' in cmd:
+            if kali_control:
+                return kali_control.get_system_info()
             return system_info()
         
         if 'processes' in cmd or 'running' in cmd:
+            if kali_control:
+                return kali_control.list_processes()
             return processes()
         
         if 'files' in cmd or 'list' in cmd:
@@ -241,6 +280,8 @@ def process_command(cmd):
                 return install_package(package)
         
         if 'update' in cmd:
+            if kali_control:
+                return kali_control.apt_update()
             return update_system()
         
         if 'clone' in cmd and 'git' in cmd:
@@ -260,18 +301,61 @@ def process_command(cmd):
             return search_web("latest news")
         
         if 'cpu' in cmd or 'memory' in cmd or 'disk' in cmd:
+            if kali_control:
+                cpu_info = kali_control.cpu_info()
+                mem_info = kali_control.memory_info()
+                disk_info = kali_control.disk_usage()
+                return f"{cpu_info}\n\n{mem_info}\n\n{disk_info}"
             m = memory_info()
             s = storage_info()
             return f"CPU: {cpu()}, RAM: {m.get('percent', 'N/A')}%, Storage: {s.get('percent', 'N/A')}%"
+        
+        # Kali-specific commands
+        if 'kali tools' in cmd:
+            if kali_control:
+                return kali_control.get_kali_tools()
+            return "Kali control not available"
+        
+        if 'check root' in cmd or 'root access' in cmd:
+            if kali_control:
+                return kali_control.check_root()
+            return "Kali control not available"
+        
+        if 'network' in cmd:
+            if kali_control:
+                return kali_control.get_network_info()
+            return system_info()
+        
+        if 'ports' in cmd or 'listening' in cmd:
+            if kali_control:
+                return kali_control.check_listening_ports()
+            return "Kali control not available"
+        
+        if 'services' in cmd:
+            if kali_control:
+                return kali_control.list_services()
+            return "Kali control not available"
+        
+        if 'logs' in cmd:
+            if kali_control:
+                return kali_control.system_logs()
+            return "Kali control not available"
         
         if 'help' in cmd:
             return get_help_text()
         
         if 'joke' in cmd:
+            # Use Kali personality for jokes
+            if get_kali_personality:
+                return get_kali_personality().get_joke()
             from bosco_os.brain.neural_brain import NormalHumanPersonality
             return NormalHumanPersonality().get_joke()
         
         # Return neural brain response for conversation
+        # Use Kali personality if available
+        if get_kali_personality and kali_control and kali_control.is_kali:
+            return get_kali_personality().converse(cmd, result.get('sentiment', 0))
+        
         return result['response']
     
     # Fallback to pattern matching
@@ -342,7 +426,7 @@ Be helpful and execute user requests!"""
 
 def get_help_text():
     return f"""
-╔══════════════════ {AI_NAME} Full Control Commands ══════════════════╗
+╔══════════════════ {AI_NAME} Full Control + Kali Linux Commands ══════════════════╗
 ║                                                                 ║
 ║  🖥️ TERMINAL:                                                   ║
 ║    • "run [command]" - Execute terminal command               ║
@@ -367,7 +451,7 @@ def get_help_text():
 ║                                                                 ║
 ║  💻 SYSTEM:                                                     ║
 ║    • "system info" - Full system information                   ║
-║    • "processes" - Running processes                            ║
+║    • "processes" / "list processes" - Running processes        ║
 ║    • "screenshot" - Take screenshot                            ║
 ║    • "cpu" / "memory" / "disk" - Quick stats                  ║
 ║                                                                 ║
@@ -381,10 +465,56 @@ def get_help_text():
 ║    • "copy [text]" - Copy to clipboard                         ║
 ║                                                                 ║
 ║  📦 SYSTEM MAINTENANCE:                                         ║
-║    • "install [package]" - Install package (needs sudo)        ║
-║    • "update" - Update system                                   ║
+║    • "install [package]" - Install package (needs sudo)         ║
+║    • "update" - Update system (apt update)                    ║
 ║    • "git clone [url]" - Clone repository                      ║
 ║    • "download [url]" - Download file                          ║
+║                                                                 ║
+║  ════════════════════ KALI LINUX SPECIFIC ════════════════════ ║
+║                                                                 ║
+║  🛠️ PROCESS MANAGEMENT:                                        ║
+║    • "list processes" - Show top processes                     ║
+║    • "find process [name]" - Find process by name             ║
+║    • "kill process [PID]" - Kill a process                    ║
+║                                                                 ║
+║  🌐 NETWORK OPERATIONS:                                          ║
+║    • "network status" / "check network" - Network config       ║
+║    • "listening ports" / "check ports" - Show open ports       ║
+║    • "connections" - Show active connections                  ║
+║    • "nmap scan [target]" - Run nmap scan                     ║
+║                                                                 ║
+║  ⚙️ SERVICES:                                                   ║
+║    • "list services" - Show running services                    ║
+║    • "service status [name]" - Check service status            ║
+║    • "start service [name]" - Start a service                  ║
+║    • "stop service [name]" - Stop a service                    ║
+║                                                                 ║
+║  📦 PACKAGE MANAGEMENT:                                         ║
+║    • "check package [name]" - Check if package installed       ║
+║    • "list packages" - List installed packages                 ║
+║    • "apt update" - Update package lists                       ║
+║    • "apt upgrade" - Upgrade system                            ║
+║                                                                 ║
+║  🛡️ SECURITY & FIREWALL:                                        ║
+║    • "check iptables" - Show iptables rules                    ║
+║    • "ufw status" - Show UFW status                           ║
+║    • "check root" - Check if running as root                   ║
+║    • "kali tools" - Check installed Kali tools                 ║
+║                                                                 ║
+║  📝 LOGS & ANALYSIS:                                            ║
+║    • "system logs" / "logs" - Show system logs                ║
+║    • "auth logs" - Show authentication logs                    ║
+║    • "dmesg" / "kernel logs" - Show kernel messages            ║
+║                                                                 ║
+║  👥 USER MANAGEMENT:                                            ║
+║    • "list users" - Show system users                           ║
+║    • "list groups" - Show system groups                        ║
+║                                                                 ║
+║  💾 DISK & FILES:                                              ║
+║    • "disk usage" - Show disk space                            ║
+║    • "mounts" - Show mount points                              ║
+║    • "find large files" - Find big files                       ║
+║    • "file info [path]" - Show file permissions                ║
 ║                                                                 ║
 ║  💬 CONVERSATION:                                               ║
 ║    • Just talk naturally!                                      ║

@@ -520,6 +520,18 @@ def press_key(key: str) -> str:
 def click(x: int = None, y: int = None) -> str:
     return system.click(x, y)
 
+def install_package(package: str) -> str:
+    return system.install_package(package)
+
+def update_system() -> str:
+    return system.update_system()
+
+def git_clone(repo_url: str) -> str:
+    return system.git_clone(repo_url)
+
+def download_file(url: str) -> str:
+    return system.download_file(url)
+
 
 if __name__ == "__main__":
     print("Full System Control Module Ready")
