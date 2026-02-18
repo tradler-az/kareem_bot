@@ -1,0 +1,821 @@
+"""
+Bosco Core - GUI Server with Robot Avatar
+A floating widget-style GUI with animated robot face
+"""
+
+from flask import Flask, render_template_string, jsonify, request
+from flask_socketio import SocketIO
+import threading
+import time
+import subprocess
+import os
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'bosco-secret-key'
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+
+# Global state
+assistant_state = {
+    "status": "idle",  # idle, listening, processing, speaking
+    "message": "",
+    "last_command": "",
+    "response": ""
+}
+
+# HTML Template for the floating robot widget
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bosco Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: transparent;
+            overflow: hidden;
+        }
+        
+        .widget-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10000;
+        }
+        
+        .robot-face {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(145deg, #1a1a2e, #16213e);
+            border-radius: 50%;
+            position: relative;
+            cursor: move;
+            box-shadow: 
+                0 0 30px rgba(0, 255, 255, 0.3),
+                0 0 60px rgba(0, 255, 255, 0.1),
+                inset 0 0 20px rgba(0, 0, 0, 0.5);
+            border: 3px solid #00d4ff;
+            transition: transform 0.3s ease;
+        }
+        
+        .robot-face:hover {
+            transform: scale(1.05);
+        }
+        
+        .robot-face.listening {
+            animation: pulse-green 1s infinite;
+            border-color: #00ff88;
+        }
+        
+        .robot-face.processing {
+            animation: pulse-yellow 0.5s infinite;
+            border-color: #ffd700;
+        }
+        
+        .robot-face.speaking {
+            animation: pulse-cyan 0.3s infinite;
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.6);
+        }
+        
+        @keyframes pulse-green {
+            0%, 100% { box-shadow: 0 0 30px rgba(0, 255, 136, 0.3); }
+            50% { box-shadow: 0 0 50px rgba(0, 255, 136, 0.6); }
+        }
+        
+        @keyframes pulse-yellow {
+            0%, 100% { box-shadow: 0 0 30px rgba(255, 215, 0, 0.3); }
+            50% { box-shadow: 0 0 50px rgba(255, 215, 0, 0.6); }
+        }
+        
+        @keyframes pulse-cyan {
+            0%, 100% { box-shadow: 0 0 30px rgba(0, 255, 255, 0.4); }
+            50% { box-shadow: 0 0 60px rgba(0, 255, 255, 0.8); }
+        }
+        
+        /* Eyes */
+        .eyes {
+            position: absolute;
+            top: 35%;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+        }
+        
+        .eye {
+            width: 22px;
+            height: 22px;
+            background: #00d4ff;
+            border-radius: 50%;
+            position: relative;
+            box-shadow: 0 0 15px #00d4ff;
+            transition: all 0.3s ease;
+        }
+        
+        .eye::after {
+            content: '';
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+        }
+        
+        .listening .eye {
+            background: #00ff88;
+            box-shadow: 0 0 20px #00ff88;
+            height: 18px;
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+        }
+        
+        .processing .eye {
+            animation: blink 0.2s infinite;
+        }
+        
+        .speaking .eye {
+            width: 25px;
+            height: 25px;
+        }
+        
+        @keyframes blink {
+            0%, 100% { transform: scaleY(1); }
+            50% { transform: scaleY(0.1); }
+        }
+        
+        /* Mouth */
+        .mouth {
+            position: absolute;
+            bottom: 25%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 8px;
+            background: #00d4ff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #00d4ff;
+            transition: all 0.3s ease;
+        }
+        
+        .speaking .mouth {
+            height: 15px;
+            border-radius: 50%;
+            animation: talk 0.2s infinite alternate;
+        }
+        
+        @keyframes talk {
+            0% { width: 25px; height: 10px; }
+            100% { width: 35px; height: 18px; }
+        }
+        
+        /* Status indicator */
+        .status-dot {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 12px;
+            height: 12px;
+            background: #00ff88;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #00ff88;
+            animation: status-pulse 2s infinite;
+        }
+        
+        @keyframes status-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Chat Panel */
+        .chat-panel {
+            position: fixed;
+            bottom: 160px;
+            right: 20px;
+            width: 350px;
+            max-height: 400px;
+            background: rgba(26, 26, 46, 0.95);
+            border-radius: 15px;
+            border: 2px solid #00d4ff;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .chat-panel.active {
+            display: flex;
+        }
+        
+        .chat-header {
+            background: linear-gradient(90deg, #00d4ff, #0099cc);
+            padding: 12px 15px;
+            color: white;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .chat-close {
+            cursor: pointer;
+            font-size: 18px;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            max-height: 280px;
+        }
+        
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .message.user {
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+            margin-left: 20px;
+        }
+        
+        .message.bosco {
+            background: rgba(0, 255, 136, 0.15);
+            color: #00ff88;
+            margin-right: 20px;
+        }
+        
+        .chat-input {
+            padding: 10px;
+            border-top: 1px solid rgba(0, 212, 255, 0.3);
+            display: flex;
+        }
+        
+        .chat-input input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #00d4ff;
+            border-radius: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            outline: none;
+        }
+        
+        .chat-input button {
+            margin-left: 8px;
+            padding: 8px 15px;
+            background: #00d4ff;
+            border: none;
+            border-radius: 20px;
+            color: #1a1a2e;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .chat-input button:hover {
+            background: #00ff88;
+        }
+        
+        /* Quick Actions */
+        .quick-actions {
+            position: fixed;
+            bottom: 150px;
+            right: 160px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .robot-face:hover + .quick-actions,
+        .quick-actions:hover {
+            opacity: 1;
+        }
+        
+        .action-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(26, 26, 46, 0.9);
+            border: 2px solid #00d4ff;
+            border-radius: 10px;
+            color: #00d4ff;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        .action-btn:hover {
+            background: #00d4ff;
+            color: #1a1a2e;
+            transform: scale(1.1);
+        }
+        
+        /* Control Panel */
+        .control-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(26, 26, 46, 0.95);
+            border: 2px solid #00d4ff;
+            border-radius: 15px;
+            padding: 15px;
+            width: 300px;
+            display: none;
+        }
+        
+        .control-panel.active {
+            display: block;
+        }
+        
+        .control-panel h3 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            color: #aaa;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #00d4ff;
+            border-radius: 5px;
+            color: white;
+        }
+        
+        .control-row {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .control-row button {
+            flex: 1;
+            padding: 8px;
+            background: rgba(0, 212, 255, 0.2);
+            border: 1px solid #00d4ff;
+            border-radius: 5px;
+            color: #00d4ff;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .control-row button:hover {
+            background: #00d4ff;
+            color: #1a1a2e;
+        }
+    </style>
+</head>
+<body>
+    <!-- Robot Avatar -->
+    <div class="widget-container">
+        <div class="robot-face" id="robotFace" onclick="toggleChat()">
+            <div class="status-dot"></div>
+            <div class="eyes">
+                <div class="eye"></div>
+                <div class="eye"></div>
+            </div>
+            <div class="mouth"></div>
+        </div>
+        
+        <div class="quick-actions">
+            <button class="action-btn" onclick="showControlPanel()" title="PC Control">🎮</button>
+            <button class="action-btn" onclick="toggleAlwaysOnTop()" title="Always on Top">📌</button>
+            <button class="action-btn" onclick="minimizeWidget()" title="Minimize">➖</button>
+        </div>
+    </div>
+    
+    <!-- Chat Panel -->
+    <div class="chat-panel" id="chatPanel">
+        <div class="chat-header">
+            <span>🤖 Bosco Assistant</span>
+            <span class="chat-close" onclick="toggleChat()">✕</span>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bosco">Hello! I'm Bosco. How can I help you today?</div>
+        </div>
+        <div class="chat-input">
+            <input type="text" id="userInput" placeholder="Type a command..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+    
+    <!-- Control Panel -->
+    <div class="control-panel" id="controlPanel">
+        <h3>🎮 PC Control</h3>
+        
+        <div class="control-group">
+            <label>Open Application</label>
+            <div class="control-row">
+                <input type="text" id="appName" placeholder="e.g., notepad, vscode">
+                <button onclick="openApp()">Open</button>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label>Type Text</label>
+            <div class="control-row">
+                <input type="text" id="typeText" placeholder="Text to type...">
+                <button onclick="typeText()">Type</button>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label>Run Command</label>
+            <div class="control-row">
+                <input type="text" id="terminalCmd" placeholder="Terminal command...">
+                <button onclick="runCommand()">Run</button>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label>Quick Actions</label>
+            <div class="control-row">
+                <button onclick="screenshot()">📸 Screenshot</button>
+                <button onclick="showDesktop()">🖥️ Desktop</button>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <div class="control-row">
+                <button onclick="closeControlPanel()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        const socket = io();
+        
+        // Update robot face based on status
+        socket.on('status_update', function(data) {
+            const face = document.getElementById('robotFace');
+            face.className = 'robot-face ' + data.status;
+        });
+        
+        function toggleChat() {
+            const panel = document.getElementById('chatPanel');
+            panel.classList.toggle('active');
+        }
+        
+        function showControlPanel() {
+            document.getElementById('controlPanel').classList.toggle('active');
+        }
+        
+        function closeControlPanel() {
+            document.getElementById('controlPanel').classList.remove('active');
+        }
+        
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        }
+        
+        function sendMessage() {
+            const input = document.getElementById('userInput');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            // Add user message
+            addMessage(message, 'user');
+            input.value = '';
+            
+            // Send to server
+            socket.emit('user_message', {message: message});
+            
+            // Update status
+            socket.emit('set_status', {status: 'processing'});
+        }
+        
+        function addMessage(text, sender) {
+            const container = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = 'message ' + sender;
+            div.textContent = text;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        // Receive responses
+        socket.on('bosco_response', function(data) {
+            addMessage(data.response, 'bosco');
+            socket.emit('set_status', {status: 'idle'});
+        });
+        
+        // PC Control functions
+        function openApp() {
+            const app = document.getElementById('appName').value;
+            if (app) {
+                socket.emit('pc_control', {action: 'open_app', value: app});
+                document.getElementById('appName').value = '';
+            }
+        }
+        
+        function typeText() {
+            const text = document.getElementById('typeText').value;
+            if (text) {
+                socket.emit('pc_control', {action: 'enhanced_type', value: text});
+                document.getElementById('typeText').value = '';
+            }
+        }
+        
+        function openAndWrite() {
+            const cmd = document.getElementById('typeText').value;
+            if (cmd) {
+                socket.emit('pc_control', {action: 'open_and_write', value: cmd});
+                document.getElementById('typeText').value = '';
+            }
+        }
+        
+        function runCommand() {
+            const cmd = document.getElementById('terminalCmd').value;
+            if (cmd) {
+                socket.emit('pc_control', {action: 'run_command', value: cmd});
+                document.getElementById('terminalCmd').value = '';
+            }
+        }
+        
+        function screenshot() {
+            socket.emit('pc_control', {action: 'screenshot', value: ''});
+        }
+        
+        function showDesktop() {
+            socket.emit('pc_control', {action: 'show_desktop', value: ''});
+        }
+        
+        function toggleAlwaysOnTop() {
+            socket.emit('pc_control', {action: 'always_on_top', value: ''});
+        }
+        
+        function minimizeWidget() {
+            socket.emit('pc_control', {action: 'minimize', value: ''});
+        }
+        
+        // Draggable widget
+        let isDragging = false;
+        let currentX;
+        let currentY;
+        let initialX;
+        let initialY;
+        let xOffset = 0;
+        let yOffset = 0;
+        
+        const robotFace = document.getElementById('robotFace');
+        
+        robotFace.addEventListener('mousedown', dragStart);
+        document.addEventListener('mouseup', dragEnd);
+        document.addEventListener('mousemove', drag);
+        
+        function dragStart(e) {
+            initialX = e.clientX - xOffset;
+            initialY = e.clientY - yOffset;
+            if (e.target === robotFace || e.target.parentNode === robotFace) {
+                isDragging = true;
+            }
+        }
+        
+        function dragEnd() {
+            initialX = currentX;
+            initialY = currentY;
+            isDragging = false;
+        }
+        
+        function drag(e) {
+            if (isDragging) {
+                e.preventDefault();
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+                xOffset = currentX;
+                yOffset = currentY;
+                document.querySelector('.widget-container').style.bottom = 'auto';
+                document.querySelector('.widget-container').style.right = 'auto';
+                document.querySelector('.widget-container').style.left = currentX + 'px';
+                document.querySelector('.widget-container').style.top = currentY + 'px';
+            }
+        }
+    </script>
+</body>
+</html>
+"""
+
+# Import existing modules
+try:
+    import sys
+    sys.path.insert(0, '/home/tradler/Desktop/bosco-core')
+    from bosco_os.brain.llm_client import get_llm
+    from bosco_os.capabilities.system.pc_control import PCControl
+    from bosco_os.capabilities.system.enhanced_automation import EnhancedAutomation
+    pc_control = PCControl()
+    automation = EnhancedAutomation()
+except Exception as e:
+    print(f"Warning: Could not import modules: {e}")
+    pc_control = None
+    automation = None
+    get_llm = None
+
+
+@app.route('/')
+def index():
+    """Serve the main widget page"""
+    return render_template_string(HTML_TEMPLATE)
+
+
+@app.route('/api/status')
+def get_status():
+    """Get current assistant status"""
+    return jsonify(assistant_state)
+
+
+@app.route('/api/set_status', methods=['POST'])
+def set_status():
+    """Set assistant status"""
+    data = request.json
+    assistant_state['status'] = data.get('status', 'idle')
+    socketio.emit('status_update', {'status': assistant_state['status']})
+    return jsonify({'success': True})
+
+
+@app.route('/api/pc_control', methods=['POST'])
+def pc_control_api():
+    """Handle PC control commands"""
+    data = request.json
+    action = data.get('action', '')
+    value = data.get('value', '')
+    
+    result = {'success': False, 'message': ''}
+    
+    try:
+        if action == 'open_app' and pc_control:
+            result['message'] = pc_control.open_app(value)
+            result['success'] = True
+        elif action == 'open_and_write' and automation:
+            # Handle "open [app] and write [text]" command
+            result['message'] = automation.process_command(value)
+            result['success'] = True
+        elif action == 'type_text' and pc_control:
+            result['message'] = pc_control.type_text(value)
+            result['success'] = True
+        elif action == 'enhanced_type' and automation:
+            # Use enhanced automation for better text handling
+            result['message'] = automation.process_command(value)
+            result['success'] = True
+        elif action == 'run_command':
+            # Execute terminal command
+            proc = subprocess.Popen(value, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output, _ = proc.communicate()
+            result['message'] = output.decode('utf-8', errors='ignore')[:500]
+            result['success'] = True
+        elif action == 'screenshot' and pc_control:
+            result['message'] = pc_control.screenshot()
+            result['success'] = True
+        elif action == 'show_desktop' and pc_control:
+            pc_control.press_key('super+d')
+            result['message'] = 'Desktop shown'
+            result['success'] = True
+        elif action == 'always_on_top':
+            # This would need a window manager - placeholder
+            result['message'] = 'Always on top toggled'
+            result['success'] = True
+        elif action == 'minimize':
+            result['message'] = 'Widget minimized'
+            result['success'] = True
+        else:
+            result['message'] = f'Unknown action: {action}'
+    except Exception as e:
+        result['message'] = f'Error: {str(e)}'
+    
+    return jsonify(result)
+
+
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    """Handle chat messages"""
+    data = request.json
+    message = data.get('message', '')
+    
+    if not message:
+        return jsonify({'response': 'No message received'})
+    
+    # Update state
+    assistant_state['last_command'] = message
+    assistant_state['status'] = 'processing'
+    socketio.emit('status_update', {'status': 'processing'})
+    
+    try:
+        # Check if it's an automation command
+        automation_keywords = ['open', 'write', 'type', 'run', 'create file', 'click', 'screenshot']
+        is_automation = any(keyword in message.lower() for keyword in automation_keywords)
+        
+        if is_automation and automation:
+            # Use enhanced automation
+            response = automation.process_command(message)
+            if isinstance(response, list):
+                response = '\n'.join(response)
+        elif get_llm:
+            # Use LLM for regular conversation
+            llm = get_llm()
+            system_prompt = """You are Bosco, a helpful AI assistant with full PC control capabilities.
+You can help with:
+- Opening applications (notepad, vscode, chrome, etc.)
+- Writing text in apps
+- Running terminal commands
+- Taking screenshots
+- File management
+Keep responses short and friendly. Use emojis occasionally."""
+            response = llm.chat(message, system_prompt)
+        else:
+            # Fallback if no LLM
+            response = f"I received: {message}. (LLM not configured)"
+        
+        assistant_state['response'] = response
+        assistant_state['status'] = 'speaking'
+        socketio.emit('status_update', {'status': 'speaking'})
+        
+        # Emit response to client
+        socketio.emit('bosco_response', {'response': response})
+        
+        # After a delay, go back to idle
+        def reset_status():
+            time.sleep(2)
+            assistant_state['status'] = 'idle'
+            socketio.emit('status_update', {'status': 'idle'})
+        
+        threading.Thread(target=reset_status, daemon=True).start()
+        
+        return jsonify({'response': response})
+    except Exception as e:
+        assistant_state['status'] = 'idle'
+        socketio.emit('status_update', {'status': 'idle'})
+        return jsonify({'response': f'Error: {str(e)}'})
+
+
+# SocketIO events
+@socketio.on('user_message')
+def handle_user_message(data):
+    """Handle real-time chat messages"""
+    message = data.get('message', '')
+    if message:
+        chat()
+
+
+@socketio.on('set_status')
+def handle_set_status(data):
+    """Handle status changes from client"""
+    status = data.get('status', 'idle')
+    assistant_state['status'] = status
+
+
+@socketio.on('pc_control')
+def handle_pc_control(data):
+    """Handle real-time PC control"""
+    action = data.get('action', '')
+    value = data.get('value', '')
+    pc_control_api()
+
+
+def run_gui_server():
+    """Run the GUI server"""
+    print("\n" + "="*50)
+    print("🤖 BOSCO CORE GUI - Starting...")
+    print("="*50)
+    print("\n📍 GUI will be available at:")
+    print("   http://localhost:5000")
+    print("\n💡 Features:")
+    print("   - Floating robot avatar widget")
+    print("   - Click to open chat")
+    print("   - PC Control panel (hover over robot)")
+    print("   - Drag to reposition")
+    print("\n⚠️  Open http://localhost:5000 in your browser!")
+    print("="*50 + "\n")
+    
+    socketio.run(app, host='0.0.0.0', port=5000, debug=False, allow_unsafe_werkzeug=True)
+
+
+if __name__ == '__main__':
+    run_gui_server()
+

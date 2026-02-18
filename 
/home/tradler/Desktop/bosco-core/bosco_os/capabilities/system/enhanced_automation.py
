@@ -1,0 +1,356 @@
+"""
+Bosco Core - Enhanced Automation Module
+Handles complex PC automation commands like:
+- Open notepad and write [text]
+- Open VS Code and update files
+- Run terminal commands
+- Multi-step automation sequences
+"""
+
+import subprocess
+import time
+import os
+import re
+
+# Try importing automation libraries
+try:
+    import pyautogui
+    pyautogui.FAILSAFE = True
+    PYAUTOGUI_AVAILABLE = True
+except:
+    pyautogui = None
+    PYAUTOGUI_AVAILABLE = False
+
+try:
+    import pyperclip
+    PYPERCLIP_AVAILABLE = True
+except:
+    pyperclip = None
+    PYPERCLIP_AVAILABLE = False
+
+
+class EnhancedAutomation:
+    """Advanced PC automation with natural language commands"""
+    
+    def __init__(self):
+        self.command_history = []
+        
+        # Application mappings
+        self.app_commands = {
+            'notepad': 'notepad',
+            'text editor': 'notepad',
+            'terminal': 'gnome-terminal',
+            'cmd': 'cmd',
+            'command prompt': 'cmd',
+            'vscode': 'code',
+            'visual studio': 'code',
+            'chrome': 'google-chrome',
+            'browser': 'google-chrome',
+            'firefox': 'firefox',
+            'explorer': 'explorer',
+            'file manager': 'nautilus',
+            'files': 'nautilus',
+        }
+    
+    def parse_command(self, command):
+        """Parse natural language commands into actions"""
+        command = command.lower().strip()
+        self.command_history.append(command)
+        
+        actions = []
+        
+        # Pattern: "open [app] and write [text]"
+        open_write_pattern = r'open\s+(?:the\s+)?(\w+)\s+and\s+(?:write|type)\s+(.+)'
+        match = re.search(open_write_pattern, command)
+        if match:
+            app = match.group(1)
+            text = match.group(2).strip()
+            actions.append(('open_app', app))
+            # Wait for app to open
+            actions.append(('wait', 1.5))
+            actions.append(('type_text', text))
+            actions.append(('press_key', 'enter'))
+            return actions
+        
+        # Pattern: "open [app]"
+        open_pattern = r'open\s+(?:the\s+)?(\w+(?:\s+\w+)?)'
+        match = re.search(open_pattern, command)
+        if match and 'write' not in command and 'type' not in command:
+            app = match.group(1)
+            actions.append(('open_app', app))
+            return actions
+        
+        # Pattern: "write [text]" or "type [text]"
+        if command.startswith('write ') or command.startswith('type '):
+            text = command.replace('write ', '').replace('type ', '').strip()
+            actions.append(('type_text', text))
+            return actions
+        
+        # Pattern: "run [command]"
+        if command.startswith('run '):
+            cmd = command.replace('run ', '').strip()
+            actions.append(('run_terminal', cmd))
+            return actions
+        
+        # Pattern: "execute [command]"
+        if command.startswith('execute '):
+            cmd = command.replace('execute ', '').strip()
+            actions.append(('run_terminal', cmd))
+            return actions
+        
+        # Pattern: "create file [name] with [content]"
+        create_pattern = r'create\s+(?:a\s+)?file\s+(.+?)\s+with\s+(.+)'
+        match = re.search(create_pattern, command)
+        if match:
+            filename = match.group(1).strip()
+            content = match.group(2).strip()
+            actions.append(('create_file', filename, content))
+            return actions
+        
+        # Pattern: "search for [query]"
+        if 'search' in command and 'for' in command:
+            query = command.split('for')[-1].strip()
+            actions.append(('search', query))
+            return actions
+        
+        # Single actions
+        if 'screenshot' in command:
+            actions.append(('screenshot',))
+        elif 'minimize' in command:
+            actions.append(('minimize',))
+        elif 'maximize' in command:
+            actions.append(('maximize',))
+        elif 'close' in command:
+            actions.append(('close_app',))
+        
+        return actions
+    
+    def execute_actions(self, actions):
+        """Execute a list of actions"""
+        results = []
+        
+        for action in actions:
+            if action[0] == 'open_app':
+                result = self.open_app(action[1])
+            elif action[0] == 'wait':
+                time.sleep(action[1])
+                result = f"Waited {action[1]}s"
+            elif action[0] == 'type_text':
+                result = self.type_text(action[1])
+            elif action[0] == 'press_key':
+                result = self.press_key(action[1])
+            elif action[0] == 'run_terminal':
+                result = self.run_terminal(action[1])
+            elif action[0] == 'create_file':
+                result = self.create_file(action[1], action[2])
+            elif action[0] == 'screenshot':
+                result = self.screenshot()
+            elif action[0] == 'minimize':
+                result = self.minimize()
+            elif action[0] == 'maximize':
+                result = self.maximize()
+            elif action[0] == 'close_app':
+                result = self.close_current_app()
+            else:
+                result = f"Unknown action: {action[0]}"
+            
+            results.append(result)
+            time.sleep(0.3)  # Small delay between actions
+        
+        return results
+    
+    def process_command(self, command):
+        """Process a natural language command"""
+        actions = self.parse_command(command)
+        if not actions:
+            return [f"Could not understand command: {command}"]
+        
+        return self.execute_actions(actions)
+    
+    # === CORE ACTIONS ===
+    
+    def open_app(self, app_name):
+        """Open an application"""
+        app = app_name.lower().strip()
+        
+        # Check mapped apps
+        if app in self.app_commands:
+            cmd = self.app_commands[app]
+        else:
+            cmd = app
+        
+        try:
+            # Try different ways to open
+            if os.name == 'nt':  # Windows
+                subprocess.Popen(cmd, shell=True)
+            else:  # Linux
+                subprocess.Popen([cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return f"Opened {app_name}"
+        except Exception as e:
+            return f"Error opening {app_name}: {e}"
+    
+    def type_text(self, text):
+        """Type text using keyboard"""
+        try:
+            if PYPERCLIP_AVAILABLE:
+                # Use clipboard for reliable text entry
+                pyperclip.copy(text)
+                if PYAUTOGUI_AVAILABLE:
+                    # Paste from clipboard (Ctrl+V)
+                    pyautogui.hotkey('ctrl', 'v')
+                else:
+                    # Fallback: use xdotool on Linux
+                    subprocess.run(['xdotool', 'key', '--clearmodifiers', 'ctrl+v'], 
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                return f"Typed: {text}"
+            elif PYAUTOGUI_AVAILABLE:
+                pyautogui.write(text)
+                return f"Typed: {text}"
+            else:
+                return "No typing method available"
+        except Exception as e:
+            return f"Typing error: {e}"
+    
+    def press_key(self, key):
+        """Press a keyboard key"""
+        try:
+            if PYAUTOGUI_AVAILABLE:
+                pyautogui.press(key)
+                return f"Pressed {key}"
+            else:
+                subprocess.run(['xdotool', 'key', key], 
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                return f"Pressed {key}"
+        except Exception as e:
+            return f"Key press error: {e}"
+    
+    def run_terminal(self, command):
+        """Run a terminal command"""
+        try:
+            result = subprocess.run(
+                command if os.name == 'nt' else command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            output = result.stdout[:500] if result.stdout else result.stderr[:500]
+            return output if output else "Command executed successfully"
+        except Exception as e:
+            return f"Command error: {e}"
+    
+    def create_file(self, filename, content):
+        """Create a file with content"""
+        try:
+            # Get home directory
+            home = os.path.expanduser('~')
+            filepath = os.path.join(home, filename)
+            
+            with open(filepath, 'w') as f:
+                f.write(content)
+            
+            return f"Created file: {filepath}"
+        except Exception as e:
+            return f"File creation error: {e}"
+    
+    def screenshot(self):
+        """Take a screenshot"""
+        try:
+            if PYAUTOGUI_AVAILABLE:
+                path = f"{os.path.expanduser('~')}/Pictures/bosco_screenshot_{int(time.time())}.png"
+                pyautogui.screenshot(path)
+                return f"Screenshot saved: {path}"
+            else:
+                return "Screenshot not available"
+        except Exception as e:
+            return f"Screenshot error: {e}"
+    
+    def minimize(self):
+        """Minimize current window"""
+        try:
+            if PYAUTOGUI_AVAILABLE:
+                pyautogui.hotkey('win', 'down')  # Windows
+            else:
+                subprocess.run(['xdotool', 'key', 'super+down'], 
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return "Minimized window"
+        except:
+            return "Minimize not available"
+    
+    def maximize(self):
+        """Maximize current window"""
+        try:
+            if PYAUTOGUI_AVAILABLE:
+                pyautogui.hotkey('win', 'up')  # Windows
+            else:
+                subprocess.run(['xdotool', 'key', 'super+up'], 
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return "Maximized window"
+        except:
+            return "Maximize not available"
+    
+    def close_current_app(self):
+        """Close the current application"""
+        try:
+            if PYAUTOGUI_AVAILABLE:
+                pyautogui.hotkey('alt', 'f4')
+            else:
+                subprocess.run(['xdotool', 'key', 'alt+F4'], 
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return "Closed application"
+        except:
+            return "Close not available"
+    
+    def click_at(self, x, y):
+        """Click at specific coordinates"""
+        try:
+            if PYAUTOGUI_AVAILABLE:
+                pyautogui.click(x, y)
+                return f"Clicked at {x}, {y}"
+            return "Click not available"
+        except Exception as e:
+            return f"Click error: {e}"
+
+
+# Global instance
+automation = EnhancedAutomation()
+
+
+# Quick functions
+def process_command(cmd):
+    return automation.process_command(cmd)
+
+def open_app(app):
+    return automation.open_app(app)
+
+def type_text(text):
+    return automation.type_text(text)
+
+def run_terminal(cmd):
+    return automation.run_terminal(cmd)
+
+def create_file(name, content):
+    return automation.create_file(name, content)
+
+def screenshot():
+    return automation.screenshot()
+
+
+if __name__ == "__main__":
+    # Test commands
+    print("Enhanced Automation Module")
+    print("="*40)
+    
+    test_commands = [
+        "open notepad",
+        "open vscode",
+        "type hello world",
+        "run ls -la",
+    ]
+    
+    for cmd in test_commands:
+        print(f"\n> {cmd}")
+        results = process_command(cmd)
+        for r in results:
+            print(f"  - {r}")
+

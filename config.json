@@ -1,25 +1,29 @@
 {
-  "name": "Kareem OS",
-  "version": "2.0.0",
-  "ai_name": "Kareem",
+  "name": "Bosco Core",
+  "version": "3.0.0",
+  "ai_name": "Bosco",
+  "mode": "cli",
   "groq_api_key": "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",
   "voice": {
     "enabled": true,
     "rate": 180,
     "pitch": 0.9,
-    "voice_type": "juice_wrld"
+    "voice_type": "human"
   },
   "personality": {
-    "style": "juice_wrld",
-    "traits": ["melodic", "dark", "auto_tuned", "emotional"]
+    "style": "normal_human",
+    "traits": ["friendly", "helpful", "conversational", "empathetic"]
   },
   "features": {
     "wake_word": true,
     "continuous_listening": true,
     "full_pc_control": true,
-    "nlp": true,
-    "real_time_analysis": true,
-    "deep_integration": true
+    "ml_brain": true,
+    "neural_learning": true,
+    "sentiment_analysis": true,
+    "predictive_analytics": true,
+    "voice_input": true,
+    "voice_output": true
   },
   "pc_control": {
     "mouse": true,
@@ -29,5 +33,12 @@
     "files": true,
     "system": true,
     "clipboard": true
+  },
+  "ml_settings": {
+    "learning_enabled": true,
+    "learning_rate": 0.1,
+    "confidence_threshold": 0.7,
+    "memory_size": 1000
   }
 }
+

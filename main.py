@@ -1,20 +1,22 @@
+#!/usr/bin/env python3
 """
-Kareem OS v2.1 - Full Voice AI Assistant
-With online capabilities, voice, storage, and quiz!
+Bosco Core v3.0 - ML-Powered AI Assistant with Full PC Control
+CLI-based with neural brain, learning, terminal access, and web browsing
 """
-import sys
+
 import os
+import sys
 import json
-
-# Suppress ALSA/PulseAudio/Jack warnings before importing audio libraries
-os.environ['SDL_AUDIODRIVER'] = 'dummy'  # Use dummy audio driver
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
-
+import time
 import warnings
-warnings.filterwarnings('ignore', category=DeprecationWarning)
-warnings.filterwarnings('ignore', category=UserWarning, module='pyttsx3')
 
-# Load config
+# Suppress audio warnings
+os.environ['SDL_AUDIODRIVER'] = 'dummy'
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+warnings.filterwarnings('ignore', category=DeprecationWarning)
+warnings.filterwarnings('ignore', category=UserWarning)
+
+# Load configuration
 def load_config():
     for path in ['config.json', 'bosco_os/config.json']:
         if os.path.exists(path):
@@ -23,63 +25,106 @@ def load_config():
     return {}
 
 config = load_config()
-AI_NAME = config.get('ai_name', 'Kareem')
+AI_NAME = config.get('ai_name', 'Bosco')
+VERSION = config.get('version', '3.0.0')
 
-# Import modules
-from bosco_os.brain.llm_client import get_llm
-from bosco_os.brain.personality import get_greeting, acknowledge, processing, witty
-from bosco_os.brain.voice_online import (
-    search, weather, news, wiki, stock, ip_info, storage_info,
-    memory_info, quiz as quiz_game, speak as voice_speak
-)
-from bosco_os.capabilities.system.pc_control import (
-    open_app, close_app, type_text, click, screenshot
-)
-from bosco_os.capabilities.system.control import cpu
+print(f"""
+╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║     ██╗   ██╗███████╗██████╗ ████████╗███████╗██╗  ██╗    ║
+║     ██║   ██║██╔════╝██╔══██╗╚══██╔══╝██╔════╝╚██╗██╔╝    ║
+║     ██║   ██║█████╗  ██████╔╝   ██║   █████╗   ╚███╔╝     ║
+║     ╚██╗ ██╔╝██╔══╝  ██╔══██╗   ██║   ██╔══╝   ██╔██╗     ║
+║      ╚████╔╝ ███████╗██║  ██║   ██║   ███████╗██╔╝ ██╗    ║
+║       ╚═══╝  ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝    ║
+║                                                              ║
+║        ML-POWERED NEURAL BRAIN + FULL PC CONTROL            ║
+║                        v{VERSION}                             ║
+╚══════════════════════════════════════════════════════════════╝
+""")
 
-# Initialize voice engine safely with proper audio backend
-voice_engine = None
+# Import brain modules
 try:
-    import pyttsx3
-    # Try different drivers for Linux/Kali
-    for driver in ['espeak', 'nsss', 'dummy']:
-        try:
-            voice_engine = pyttsx3.init(driver)
-            # Test if it works
-            voice_engine.setProperty('rate', 180)
-            print(f"TTS initialized with {driver} driver")
-            break
-        except Exception as e:
-            continue
+    from bosco_os.brain.neural_brain import (
+        get_brain, get_learning_engine, get_predictive_engine,
+        process_input, NeuralNetworkBrain
+    )
+    print("[+] Neural Brain Module loaded")
+except ImportError as e:
+    print(f"[-] Neural Brain: {e}")
+    get_brain = None
+
+try:
+    from bosco_os.brain.llm_client import get_llm
+    print("[+] LLM Client loaded")
+except:
+    get_llm = None
+
+# Import full system control
+try:
+    from bosco_os.capabilities.system.full_control import (
+        system, run_command, search_web, browse_url, wikipedia,
+        open_app, close_app, list_files, find_file, read_file,
+        create_file, delete_file, system_info, processes,
+        screenshot, get_clipboard, set_clipboard, type_text,
+        press_key, click, install_package, update_system,
+        git_clone, download_file
+    )
+    print("[+] Full System Control loaded")
 except Exception as e:
-    print(f"Warning: TTS engine not available: {e}")
+    print(f"[-] System Control: {e}")
+    system = None
+
+# Import basic system info
+try:
+    from bosco_os.capabilities.system.control import cpu
+except:
+    cpu = lambda: "N/A"
+
+try:
+    from bosco_os.brain.voice_online import memory_info, storage_info
+except:
+    memory_info = storage_info = lambda: {"error": "unavailable"}
+
+# Initialize voice
+voice_engine = None
+def init_voice():
+    try:
+        import pyttsx3
+        for driver in ['espeak', 'nsss', 'dummy']:
+            try:
+                v = pyttsx3.init(driver)
+                v.setProperty('rate', 180)
+                print(f"[+] TTS: {driver}")
+                return v
+            except:
+                continue
+    except:
+        pass
+    return None
+
+voice_engine = init_voice()
+
 
 def speak(text):
     """Voice output"""
     print(f"🔊 {AI_NAME}: {text}")
-    
-    # Try pyttsx3 first
     if voice_engine:
         try:
             voice_engine.stop()
             voice_engine.say(text)
             voice_engine.runAndWait()
-            return
-        except Exception as e:
+        except:
             pass
-    
-    # Fallback to espeak command-line
+    # Fallback
     try:
         import subprocess
-        # Escape text for shell
-        text_escaped = text.replace('"', '\\"').replace('$', '\\$')
-        subprocess.Popen(
-            ['espeak', '-s', '120', '-a', '100', text_escaped],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
+        text_escaped = text.replace('"', '\\"')
+        subprocess.Popen(['espeak', '-s', '120', text_escaped], 
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except:
         pass
+
 
 def listen():
     """Voice input"""
@@ -88,146 +133,296 @@ def listen():
         r = sr.Recognizer()
         with sr.Microphone() as source:
             print("🎤 Listening...")
-            # Adjust for ambient noise
             r.adjust_for_ambient_noise(source, duration=0.5)
             audio = r.listen(source, timeout=5)
         cmd = r.recognize_google(audio).lower()
         print(f"👤 You: {cmd}")
         return cmd
-    except ImportError:
-        print("Speech recognition not available. Using text input.")
+    except:
         return input("⌨️ Type: ")
-    except Exception as e:
-        print(f"Listening error: {e}")
-        return input("⌨️ Type: ")
+
 
 def process_command(cmd):
-    """Process commands with online + AI"""
-    cmd = cmd.lower()
-    llm = get_llm()
+    """Process commands with full system control"""
+    if not cmd:
+        return "I didn't catch that."
     
-    # === VOICE COMMANDS ===
-    if 'speak' in cmd or 'say' in cmd:
-        text = cmd.replace('speak', '').replace('say', '').strip()
-        return text
+    cmd = cmd.lower().strip()
     
-    # === ONLINE SEARCH ===
-    if 'search' in cmd or 'look up' in cmd:
-        query = cmd.replace('search', '').replace('look up', '').strip()
-        return search(query)
+    # Use neural brain for intent
+    if get_brain:
+        result = get_brain().process(cmd)
+        intent = result['intent']
+        
+        # Handle specific intents with full system control
+        if intent == 'search' or 'search' in cmd:
+            query = cmd.replace('search', '').replace('search for', '').strip()
+            if query:
+                return search_web(query)
+        
+        if 'wikipedia' in cmd or 'what is' in cmd or 'who is' in cmd:
+            topic = cmd.replace('wikipedia', '').replace('what is', '').replace('who is', '').replace('tell me about', '').strip()
+            if topic:
+                return wikipedia(topic)
+        
+        if 'open' in cmd:
+            app = cmd.replace('open', '').strip()
+            if app:
+                return open_app(app)
+        
+        if 'close' in cmd or 'kill' in cmd:
+            app = cmd.replace('close', '').replace('kill', '').strip()
+            if app:
+                return close_app(app)
+        
+        if 'run' in cmd or 'execute' in cmd:
+            command = cmd.replace('run', '').replace('execute', '').strip()
+            if command:
+                return run_command(command)
+        
+        if 'terminal' in cmd or 'cmd' in cmd:
+            return open_app('terminal')
+        
+        if 'screenshot' in cmd:
+            return screenshot()
+        
+        if 'system info' in cmd or 'check system' in cmd:
+            return system_info()
+        
+        if 'processes' in cmd or 'running' in cmd:
+            return processes()
+        
+        if 'files' in cmd or 'list' in cmd:
+            path = cmd.replace('list files', '').replace('ls', '').strip() or '.'
+            return list_files(path)
+        
+        if 'find' in cmd and 'file' in cmd:
+            name = cmd.replace('find file', '').replace('search for', '').strip()
+            if name:
+                return find_file(name)
+        
+        if 'read' in cmd and 'file' in cmd:
+            filepath = cmd.replace('read file', '').replace('show', '').strip()
+            if filepath:
+                return read_file(filepath)
+        
+        if 'create' in cmd and 'file' in cmd:
+            return "Please specify filename and content: create file [name] with [content]"
+        
+        if 'delete' in cmd or 'remove' in cmd:
+            filepath = cmd.replace('delete', '').replace('remove', '').strip()
+            if filepath:
+                return delete_file(filepath)
+        
+        if 'clipboard' in cmd:
+            if 'get' in cmd or 'show' in cmd or 'read' in cmd:
+                return get_clipboard()
+            if 'copy' in cmd or 'set' in cmd:
+                text = cmd.replace('copy to clipboard', '').replace('set clipboard', '').strip()
+                if text:
+                    return set_clipboard(text)
+        
+        if 'type' in cmd:
+            text = cmd.replace('type', '').replace('write', '').strip()
+            if text:
+                return type_text(text)
+        
+        if 'press' in cmd and 'key' in cmd:
+            key = cmd.replace('press key', '').replace('press', '').strip()
+            if key:
+                return press_key(key)
+        
+        if 'click' in cmd:
+            return click()
+        
+        if 'install' in cmd:
+            package = cmd.replace('install', '').strip()
+            if package:
+                return install_package(package)
+        
+        if 'update' in cmd:
+            return update_system()
+        
+        if 'clone' in cmd and 'git' in cmd:
+            repo = cmd.replace('git clone', '').replace('clone', '').strip()
+            if repo:
+                return git_clone(repo)
+        
+        if 'download' in cmd:
+            url = cmd.replace('download', '').strip()
+            if url:
+                return download_file(url)
+        
+        if 'weather' in cmd:
+            return browse_url("https://wttr.in")
+        
+        if 'news' in cmd:
+            return search_web("latest news")
+        
+        if 'cpu' in cmd or 'memory' in cmd or 'disk' in cmd:
+            m = memory_info()
+            s = storage_info()
+            return f"CPU: {cpu()}, RAM: {m.get('percent', 'N/A')}%, Storage: {s.get('percent', 'N/A')}%"
+        
+        if 'help' in cmd:
+            return get_help_text()
+        
+        if 'joke' in cmd:
+            from bosco_os.brain.neural_brain import NormalHumanPersonality
+            return NormalHumanPersonality().get_joke()
+        
+        # Return neural brain response for conversation
+        return result['response']
     
-    # === WIKIPEDIA ===
-    if 'what is' in cmd or 'who is' in cmd or 'tell me about' in cmd:
-        topic = cmd.replace('what is', '').replace('who is', '').replace('tell me about', '').strip()
-        return wiki(topic)
+    # Fallback to pattern matching
+    return pattern_match_command(cmd)
+
+
+def pattern_match_command(cmd):
+    """Fallback pattern-based command processing"""
     
-    # === WEATHER ===
-    if 'weather' in cmd:
-        return weather()
+    # Direct terminal commands
+    if cmd.startswith('run ') or cmd.startswith('exec ') or cmd.startswith('! '):
+        cmd_text = cmd.replace('run ', '').replace('exec ', '').replace('! ', '')
+        return run_command(cmd_text)
     
-    # === NEWS ===
-    if 'news' in cmd:
-        return news()
+    # Search
+    if 'search' in cmd:
+        query = cmd.replace('search', '').strip()
+        if query:
+            return search_web(query)
     
-    # === STOCK ===
-    if 'stock' in cmd or 'price of' in cmd:
-        symbol = cmd.replace('stock', '').replace('price of', '').strip().upper()
-        return stock(symbol)
+    # Wikipedia
+    if 'what is' in cmd or 'who is' in cmd:
+        topic = cmd.replace('what is', '').replace('who is', '').strip()
+        if topic:
+            return wikipedia(topic)
     
-    # === IP INFO ===
-    if 'ip address' in cmd or 'my ip' in cmd:
-        return ip_info()
+    # Open/Close apps
+    if cmd.startswith('open '):
+        return open_app(cmd.replace('open ', ''))
     
-    # === STORAGE ===
-    if 'storage' in cmd or 'disk space' in cmd:
-        info = storage_info()
-        return f"Storage: {info.get('used')}/{info.get('total')} used ({info.get('percent')}%)"
+    if cmd.startswith('close ') or cmd.startswith('kill '):
+        return close_app(cmd.replace('close ', '').replace('kill ', ''))
     
-    # === MEMORY/RAM ===
-    if 'ram' in cmd or 'memory' in cmd:
-        info = memory_info()
-        return f"Memory: {info.get('used')}/{info.get('total')} used ({info.get('percent')}%)"
+    # System info
+    if 'system' in cmd or 'status' in cmd:
+        return system_info()
     
-    # === QUIZ ===
-    if 'quiz' in cmd:
-        if 'start' in cmd or 'new' in cmd:
-            quiz_game.reset()
-            q = quiz_game.get_question()
-            return f"Quiz time! {q}"
-        elif 'answer' in cmd:
-            answer = cmd.replace('answer', '').strip()
-            return quiz_game.check_answer(answer)
-        else:
-            return quiz_game.get_question()
-    
-    # === PC CONTROL ===
-    if 'open' in cmd:
-        app = cmd.replace('open', '').strip()
-        return open_app(app)
-    
-    if 'close' in cmd:
-        app = cmd.replace('close', '').strip()
-        return close_app(app)
-    
-    if 'type' in cmd or 'write' in cmd:
-        text = cmd.replace('type', '').replace('write', '').strip()
-        type_text(text)
-        return f"Typed: {text}"
-    
-    if 'click' in cmd:
-        click()
-        return "Clicked! 🔥"
-    
-    if 'screenshot' in cmd:
-        path = screenshot()
-        return f"Screenshot saved! 💀"
-    
-    # === SYSTEM STATUS ===
-    if 'status' in cmd or 'check' in cmd:
-        m = memory_info()
-        s = storage_info()
-        return f"CPU: {cpu()}, RAM: {m.get('percent')}% used, Storage: {s.get('percent')}%"
-    
-    # === HELP ===
+    # Help
     if 'help' in cmd:
-        return """
-🔥 VOICE & ONLINE:
-• "search [topic]" - Search web
-• "weather" - Get weather
-• "news" - Latest news
-• "what is [topic]" - Wikipedia
-• "quiz" - Start trivia
+        return get_help_text()
+    
+    # LLM fallback
+    if get_llm:
+        return get_llm().chat(cmd, get_system_prompt())
+    
+    # Default
+    from bosco_os.brain.neural_brain import NormalHumanPersonality
+    return NormalHumanPersonality().converse(cmd, 0.0)
 
-💀 PC CONTROL:
-• "open [app]" - Open app
-• "type [text]" - Type text
-• "screenshot" - Capture screen
 
-💾 STORAGE:
-• "storage" - Check disk
-• "memory" - Check RAM
+def get_system_prompt():
+    return f"""You are {AI_NAME}, an advanced AI assistant with full PC control.
 
-Just talk naturally! 🔥
+Your capabilities:
+- Execute terminal commands
+- Search the web and browse websites
+- Read/write files
+- Open/close applications
+- Take screenshots
+- Manage clipboard
+- Type text and press keys
+- System monitoring
+- Install packages
+- Download files
+
+Be helpful and execute user requests!"""
+
+
+def get_help_text():
+    return f"""
+╔══════════════════ {AI_NAME} Full Control Commands ══════════════════╗
+║                                                                 ║
+║  🖥️ TERMINAL:                                                   ║
+║    • "run [command]" - Execute terminal command               ║
+║    • "open terminal" - Open terminal app                       ║
+║                                                                 ║
+║  🌐 WEB:                                                        ║
+║    • "search [query]" - Search the web                        ║
+║    • "wikipedia [topic]" - Get Wikipedia info                  ║
+║    • "weather" - Check weather                                 ║
+║    • "news" - Latest news                                      ║
+║                                                                 ║
+║  📂 FILES:                                                      ║
+║    • "list files [path]" - List directory                      ║
+║    • "find file [name]" - Search for files                     ║
+║    • "read file [path]" - Read file content                   ║
+║    • "delete file [path]" - Delete a file                     ║
+║    • "create file [name] with [content]" - Create file        ║
+║                                                                 ║
+║  📱 APPS:                                                       ║
+║    • "open [app]" - Open application                           ║
+║    • "close [app]" - Close application                         ║
+║                                                                 ║
+║  💻 SYSTEM:                                                     ║
+║    • "system info" - Full system information                   ║
+║    • "processes" - Running processes                            ║
+║    • "screenshot" - Take screenshot                            ║
+║    • "cpu" / "memory" / "disk" - Quick stats                  ║
+║                                                                 ║
+║  ⌨️ INPUT:                                                      ║
+║    • "type [text]" - Type text                                 ║
+║    • "press [key]" - Press a key                               ║
+║    • "click" - Mouse click                                     ║
+║                                                                 ║
+║  📋 CLIPBOARD:                                                  ║
+║    • "clipboard" - Show clipboard                              ║
+║    • "copy [text]" - Copy to clipboard                         ║
+║                                                                 ║
+║  📦 SYSTEM MAINTENANCE:                                         ║
+║    • "install [package]" - Install package (needs sudo)        ║
+║    • "update" - Update system                                   ║
+║    • "git clone [url]" - Clone repository                      ║
+║    • "download [url]" - Download file                          ║
+║                                                                 ║
+║  💬 CONVERSATION:                                               ║
+║    • Just talk naturally!                                      ║
+║    • "joke" - Tell a joke                                     ║
+║    • "help" - Show this menu                                   ║
+║                                                                 ║
+║  🔴 Say "exit" to quit                                        ║
+╚══════════════════════════════════════════════════════════════════╝
 """
-    
-    # === AI FALLBACK ===
-    system_prompt = """You are Kareem, a cool AI. 
-Use slang like 'lil bih', 'we made it', '💀', '🔥'.
-Keep responses short and helpful."""
-    
-    return llm.chat(cmd, system_prompt)
 
 
 def main():
-    print(f"\n🔥💀 {AI_NAME} OS v2.1 - VOICE AI 💀🔥\n")
+    print(f"\n🤖 {AI_NAME} Core v{VERSION} - ML + Full PC Control\n")
     
-    greet = get_greeting()
-    print(f"🤖: {greet}")
-    speak(greet)
+    if get_brain:
+        print(f"🧠 Neural Brain initialized")
+        print(f"   Memory: {get_brain().get_memory_stats()}")
     
-    print("\nCommands: search, weather, news, quiz, storage, memory, open, type, status")
+    if system:
+        print(f"💻 Full System Control ready")
+    
+    print("\n" + "="*60)
+    print("COMMANDS: search, run [cmd], open [app], system info,")
+    print("          files, clipboard, type, click, and more!")
+    print("="*60)
     print("Or just talk naturally! Say 'exit' to quit\n")
     
+    # Greeting
+    if get_brain:
+        from bosco_os.brain.neural_brain import NormalHumanPersonality
+        greeting = NormalHumanPersonality().get_greeting()
+    else:
+        greeting = f"{AI_NAME} online - Full PC Control ready!"
+    
+    print(f"🤖: {greeting}")
+    speak(greeting)
+    
+    # Main loop
     while True:
         try:
             cmd = listen()
@@ -236,19 +431,24 @@ def main():
                 continue
             
             if cmd in ['exit', 'quit', 'bye']:
-                speak("Later, we made it! 💀🔥")
+                farewell = NormalHumanPersonality().get_farewell() if get_brain else "Goodbye!"
+                print(f"🤖: {farewell}")
+                speak(farewell)
                 break
             
-            print(f"🤖: {processing()}")
+            print(f"🤖: Processing...")
             response = process_command(cmd)
             print(f"🤖: {response}")
             speak(response)
             
         except KeyboardInterrupt:
-            print("\n💀 We out 💀")
+            print("\n\n👋 Goodbye!")
             break
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"❌ Error: {e}")
+            import traceback
+            traceback.print_exc()
+
 
 if __name__ == "__main__":
     main()

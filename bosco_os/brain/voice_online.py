@@ -369,23 +369,51 @@ class QuizGame:
         self.current = None
 
 
-# Global instances
-voice = VoiceEngine()
-online = OnlineServices()
-storage = StorageManager()
-quiz = QuizGame()
+# Global instances - lazy loaded to avoid blocking on import
+_voice = None
+_online = None
+_storage = None
+_quiz = None
 
-# Quick functions
-def speak(text): return voice.speak(text)
-def search(query): return online.search_web(query)
-def weather(city="local"): return online.get_weather(city)
-def news(topic="technology"): return online.get_news(topic)
-def wiki(topic): return online.get_wikipedia(topic)
-def stock(symbol): return online.get_stock(symbol)
-def ip_info(): return online.get_ip_info()
-def storage_info(): return storage.get_storage_info()
-def memory_info(): return storage.get_memory_info()
-def quiz_question(): return quiz.get_question()
-def quiz_answer(ans): return quiz.check_answer(ans)
-def reset_quiz(): return quiz.reset()
+def _get_voice():
+    """Lazy load VoiceEngine"""
+    global _voice
+    if _voice is None:
+        _voice = VoiceEngine()
+    return _voice
+
+def _get_online():
+    """Lazy load OnlineServices"""
+    global _online
+    if _online is None:
+        _online = OnlineServices()
+    return _online
+
+def _get_storage():
+    """Lazy load StorageManager"""
+    global _storage
+    if _storage is None:
+        _storage = StorageManager()
+    return _storage
+
+def _get_quiz():
+    """Lazy load QuizGame"""
+    global _quiz
+    if _quiz is None:
+        _quiz = QuizGame()
+    return _quiz
+
+# Quick functions - lazy loaded
+def speak(text): return _get_voice().speak(text)
+def search(query): return _get_online().search_web(query)
+def weather(city="local"): return _get_online().get_weather(city)
+def news(topic="technology"): return _get_online().get_news(topic)
+def wiki(topic): return _get_online().get_wikipedia(topic)
+def stock(symbol): return _get_online().get_stock(symbol)
+def ip_info(): return _get_online().get_ip_info()
+def storage_info(): return _get_storage().get_storage_info()
+def memory_info(): return _get_storage().get_memory_info()
+def quiz_question(): return _get_quiz().get_question()
+def quiz_answer(ans): return _get_quiz().check_answer(ans)
+def reset_quiz(): return _get_quiz().reset()
 
