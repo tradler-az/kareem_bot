@@ -7,10 +7,12 @@ import os
 import sys
 import io
 
-# Suppress ALSA and JACK warnings at import time
+# Suppress ALSA and JACK warnings at import time - MUST be first
 os.environ.setdefault('SDL_AUDIODRIVER', 'dummy')
 os.environ.setdefault('JACK_NO_AUDIO_RESERVATION', '1')
 os.environ.setdefault('JACK_NO_START_SERVER', '1')
+os.environ.setdefault('JACK_SERVER_NAME', 'none')
+os.environ.setdefault('PULSE_PROP', 'application.name=Bosco')
 
 # Suppress stderr temporarily during critical imports
 _OLD_STDERR = sys.stderr
@@ -38,6 +40,21 @@ except ImportError:
 
 # Restore stderr
 sys.stderr = _OLD_STDERR
+
+
+def _suppress_audio_errors(func):
+    """Decorator to suppress ALSA/JACK errors during audio operations"""
+    def wrapper(*args, **kwargs):
+        old_stderr = sys.stderr
+        sys.stderr = io.StringIO()
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            print(f"Audio error (suppressed): {e}")
+            return None
+        finally:
+            sys.stderr = old_stderr
+    return wrapper
 
 
 class Speaker:

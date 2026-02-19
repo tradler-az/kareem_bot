@@ -10,10 +10,13 @@ import io
 import tempfile
 import logging
 
-# Suppress ALSA and JACK warnings at the C library level
+# Suppress ALSA and JACK warnings at the C library level - MUST be first
 os.environ.setdefault('SDL_AUDIODRIVER', 'dummy')
 os.environ.setdefault('JACK_NO_AUDIO_RESERVATION', '1')
 os.environ.setdefault('JACK_NO_START_SERVER', '1')
+os.environ.setdefault('JACK_SERVER_NAME', 'none')
+os.environ.setdefault('PULSE_PROP', 'application.name=Bosco')
+os.environ.setdefault('ALSA_CONFIG_PATH', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'asound.conf'))
 os.environ.setdefault('PYGAME_HIDE_SUPPORT_PROMPT', '1')
 
 # Suppress warnings before importing any audio-related modules

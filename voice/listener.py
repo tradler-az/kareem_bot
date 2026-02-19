@@ -8,10 +8,12 @@ import sys
 import io
 import warnings
 
-# Suppress ALSA and JACK warnings at import time
+# Suppress ALSA and JACK warnings at import time - MUST be first
 os.environ.setdefault('SDL_AUDIODRIVER', 'dummy')
 os.environ.setdefault('JACK_NO_AUDIO_RESERVATION', '1')
 os.environ.setdefault('JACK_NO_START_SERVER', '1')
+os.environ.setdefault('JACK_SERVER_NAME', 'none')
+os.environ.setdefault('PULSE_PROP', 'application.name=Bosco')
 
 # Suppress stderr temporarily during critical imports
 _OLD_STDERR = sys.stderr

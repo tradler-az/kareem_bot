@@ -127,10 +127,19 @@ class VectorMemory:
         if CHROMADB_AVAILABLE and self.collection is not None:
             try:
                 embedding = self._get_embedding(text)
+                
+                # Prepare metadata - convert to proper dict format
+                meta_dict = {}
+                for key, value in meta.items():
+                    if isinstance(value, (str, int, float, bool)):
+                        meta_dict[key] = value
+                    else:
+                        meta_dict[key] = str(value)
+                
                 self.collection.add(
                     embeddings=[embedding],
                     documents=[text],
-                    metadatas=[meta],
+                    metadatas=[meta_dict],
                     ids=[doc_id]
                 )
             except Exception as e:
@@ -174,12 +183,13 @@ class VectorMemory:
             try:
                 query_embedding = self._get_embedding(query)
                 
-                where = filter_metadata if filter_metadata else None
+                # Use filter_metadata directly if provided, otherwise None
+                where_filter = filter_metadata if filter_metadata else None
                 
                 search_results = self.collection.query(
                     query_embeddings=[query_embedding],
                     n_results=n_results,
-                    where=where,
+                    where=where_filter,
                     include=["documents", "metadatas", "distances"]
                 )
                 

@@ -10,9 +10,14 @@ import json
 import time
 import warnings
 
-# Suppress audio warnings
+# Suppress audio warnings - MUST be set before any audio imports
 os.environ['SDL_AUDIODRIVER'] = 'dummy'
+os.environ['JACK_NO_AUDIO_RESERVATION'] = '1'
+os.environ['JACK_NO_START_SERVER'] = '1'
+os.environ['JACK_SERVER_NAME'] = 'none'
+os.environ['PULSE_PROP'] = 'application.name=Bosco'
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 warnings.filterwarnings('ignore', category=UserWarning)
 
@@ -112,44 +117,44 @@ try:
 except:
     memory_info = storage_info = lambda: {"error": "unavailable"}
 
-# Initialize voice
-voice_engine = None
-def init_voice():
-    try:
-        import pyttsx3
-        for driver in ['espeak', 'nsss', 'dummy']:
-            try:
-                v = pyttsx3.init(driver)
-                v.setProperty('rate', 180)
-                print(f"[+] TTS: {driver}")
-                return v
-            except:
-                continue
-    except:
-        pass
-    return None
+# Initialize voice - use voice_online module to avoid dual output
+try:
+    from bosco_os.brain.voice_online import speak as voice_speak
+    # Test that it works
+    voice_speak("test")
+    print("[+] Voice module loaded")
+except Exception as e:
+    print(f"[-] Voice module: {e}")
+    voice_speak = None
 
-voice_engine = init_voice()
+voice_engine = None
 
 
 def speak(text):
     """Voice output"""
     print(f"🔊 {AI_NAME}: {text}")
-    if voice_engine:
+    
+    # Use voice_online module to avoid dual sound output
+    if voice_speak:
+        try:
+            voice_speak(text)
+        except Exception as e:
+            print(f"Voice error: {e}")
+            # Fallback to espeak only
+            try:
+                import subprocess
+                subprocess.Popen(['espeak', '-s', '120', text], 
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except:
+                pass
+    elif voice_engine:
+        # Fallback to local engine if voice_online failed
         try:
             voice_engine.stop()
             voice_engine.say(text)
             voice_engine.runAndWait()
         except:
             pass
-    # Fallback
-    try:
-        import subprocess
-        text_escaped = text.replace('"', '\\"')
-        subprocess.Popen(['espeak', '-s', '120', text_escaped], 
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except:
-        pass
 
 
 def listen():
