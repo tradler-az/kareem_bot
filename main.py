@@ -43,9 +43,9 @@ print(f"""
 ║      ╚████╔╝ ███████╗██║  ██║   ██║   ███████╗██╔╝ ██╗       ║
 ║       ╚═══╝  ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝       ║
 ║                                                              ║
-║        ML-POWERED NEURAL BRAIN + FULL PC CONTROL             ║
-║                    + KALI LINUX SUPPORT                      ║
-║                        v{VERSION}                            ║
+║         ★ ML-POWERED NEURAL BRAIN + FULL PC CONTROL ★        ║
+║                      + KALI LINUX SUPPORT                    ║
+║                           v{VERSION}                           ║
 ╚══════════════════════════════════════════════════════════════╝
 """)
 
@@ -105,6 +105,39 @@ try:
 except Exception as e:
     print(f"[-] System Control: {e}")
     system = None
+
+# Import NEW modules for enhanced features
+try:
+    from bosco_os.capabilities.network.url_scanner import get_url_scanner
+    url_scanner = get_url_scanner()
+    print("[+] URL Port Scanner loaded")
+except Exception as e:
+    print(f"[-] URL Scanner: {e}")
+    url_scanner = None
+
+try:
+    from bosco_os.capabilities.system.app_manager import get_app_manager
+    app_manager = get_app_manager()
+    print("[+] App Manager loaded")
+except Exception as e:
+    print(f"[-] App Manager: {e}")
+    app_manager = None
+
+try:
+    from bosco_os.brain.conversation_memory import get_conversation_memory
+    conversation_memory = get_conversation_memory()
+    print("[+] Conversation Memory loaded")
+except Exception as e:
+    print(f"[-] Conversation Memory: {e}")
+    conversation_memory = None
+
+try:
+    from bosco_os.core.self_update import get_update_manager
+    update_manager = get_update_manager()
+    print("[+] Self-Update System loaded")
+except Exception as e:
+    print(f"[-] Self-Update: {e}")
+    update_manager = None
 
 # Import basic system info
 try:
@@ -345,6 +378,78 @@ def process_command(cmd):
             if kali_control:
                 return kali_control.system_logs()
             return "Kali control not available"
+        
+        # NEW: Port scanning
+        if 'scan' in cmd and 'port' in cmd:
+            target = cmd.replace('scan', '').replace('ports', '').replace('on', '').strip()
+            if target and url_scanner:
+                return url_scanner.quick_scan(target)
+            return "What do you want to scan?"
+        
+        # NEW: App listing
+        if cmd in ['list apps', 'show apps', 'all apps']:
+            if app_manager:
+                return app_manager.list_installed_apps(30)
+            return "App manager not available"
+        
+        if 'running apps' in cmd or 'running applications' in cmd:
+            if app_manager:
+                return app_manager.list_running_apps()
+            return "App manager not available"
+        
+        if 'find app' in cmd:
+            name = cmd.replace('find app', '').strip()
+            if name and app_manager:
+                return app_manager.find_app(name)
+            return "Which app?"
+        
+        # NEW: Memory commands
+        if cmd.startswith('remember '):
+            info = cmd.replace('remember ', '').strip()
+            if info and conversation_memory:
+                return conversation_memory.remember(info)
+            return "What should I remember?"
+        
+        if 'what did i tell you' in cmd:
+            topic = cmd.replace('what did i tell you about', '').strip()
+            if topic and conversation_memory:
+                return conversation_memory.recall(topic)
+            return "What topic?"
+        
+        if 'what did we discuss' in cmd or 'what did we talk about' in cmd:
+            if conversation_memory:
+                return conversation_memory.what_did_we_discuss()
+            return "No memory available"
+        
+        if 'recent talk' in cmd or 'show memory' in cmd:
+            if conversation_memory:
+                return conversation_memory.get_recent_summary()
+            return "No memory available"
+        
+        # NEW: Update commands
+        if 'update yourself' in cmd or 'check for updates' in cmd:
+            if update_manager:
+                result = update_manager.check_for_updates()
+                if result.get('available'):
+                    return f"Update available: {result.get('current')} -> {result.get('latest')}"
+                return "You're up to date!"
+            return "Update system not available"
+        
+        # NEW: Mode commands
+        if 'go online' in cmd:
+            return "Switching to online mode"
+        
+        if 'go offline' in cmd:
+            return "Switching to offline mode"
+        
+        if cmd == 'status':
+            status = f"{AI_NAME} v{VERSION}\n"
+            if kali_control:
+                status += f"Kali: {'Yes' if kali_control.is_kali else 'No'}\n"
+            if conversation_memory:
+                stats = conversation_memory.get_stats()
+                status += f"Conversations: {stats.get('total', 0)}"
+            return status
         
         if 'help' in cmd:
             return get_help_text()

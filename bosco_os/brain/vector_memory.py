@@ -97,8 +97,10 @@ class VectorMemory:
     
     def _get_embedding(self, text: str) -> List[float]:
         """Get embedding for a single text"""
-        embeddings = self.embedder([text])
-        return embeddings[0].tolist() if hasattr(embeddings[0], 'tolist') else embeddings[0]
+        # sentence-transformers 5.x uses encode() method
+        # Pass text as a string, not a list
+        embedding = self.embedder.encode(text, convert_to_numpy=True)
+        return embedding.tolist() if hasattr(embedding, 'tolist') else embedding
     
     def add(
         self,
@@ -120,7 +122,15 @@ class VectorMemory:
         if doc_id is None:
             doc_id = f"doc_{datetime.now().timestamp()}"
         
-        meta = metadata or {}
+        # Ensure metadata is a dict, not a list
+        meta = {}
+        if metadata and isinstance(metadata, dict):
+            for key, value in metadata.items():
+                if isinstance(value, (str, int, float, bool)):
+                    meta[key] = value
+                else:
+                    meta[key] = str(value)
+        
         meta["text"] = text[:200]  # Store preview
         meta["timestamp"] = datetime.now().isoformat()
         
@@ -128,18 +138,10 @@ class VectorMemory:
             try:
                 embedding = self._get_embedding(text)
                 
-                # Prepare metadata - convert to proper dict format
-                meta_dict = {}
-                for key, value in meta.items():
-                    if isinstance(value, (str, int, float, bool)):
-                        meta_dict[key] = value
-                    else:
-                        meta_dict[key] = str(value)
-                
                 self.collection.add(
                     embeddings=[embedding],
                     documents=[text],
-                    metadatas=[meta_dict],
+                    metadatas=[meta],
                     ids=[doc_id]
                 )
             except Exception as e:
@@ -183,8 +185,10 @@ class VectorMemory:
             try:
                 query_embedding = self._get_embedding(query)
                 
-                # Use filter_metadata directly if provided, otherwise None
-                where_filter = filter_metadata if filter_metadata else None
+                # Use filter_metadata directly if it's a valid dict, otherwise None
+                where_filter = None
+                if filter_metadata and isinstance(filter_metadata, dict):
+                    where_filter = filter_metadata
                 
                 search_results = self.collection.query(
                     query_embeddings=[query_embedding],
@@ -193,15 +197,23 @@ class VectorMemory:
                     include=["documents", "metadatas", "distances"]
                 )
                 
-                if search_results["ids"] and search_results["ids"][0]:
-                    for i, doc_id in enumerate(search_results["ids"][0]):
-                        results.append({
-                            "id": doc_id,
-                            "text": search_results["documents"][0][i],
-                            "metadata": search_results["metadatas"][0][i],
-                            "distance": search_results["distances"][0][i],
-                            "score": 1 - search_results["distances"][0][i]  # Convert distance to similarity
-                        })
+                # Properly extract results from ChromaDB response
+                if search_results and isinstance(search_results, dict):
+                    ids_list = search_results.get("ids", [[]])[0] if search_results.get("ids") else []
+                    docs_list = search_results.get("documents", [[]])[0] if search_results.get("documents") else []
+                    metas_list = search_results.get("metadatas", [[]])[0] if search_results.get("metadatas") else []
+                    dists_list = search_results.get("distances", [[]])[0] if search_results.get("distances") else []
+                    
+                    for i, doc_id in enumerate(ids_list):
+                        if doc_id and i < len(docs_list):
+                            dist = dists_list[i] if i < len(dists_list) else 0.0
+                            results.append({
+                                "id": doc_id,
+                                "text": docs_list[i] if i < len(docs_list) else "",
+                                "metadata": metas_list[i] if i < len(metas_list) else {},
+                                "distance": dist,
+                                "score": 1 - dist  # Convert distance to similarity
+                            })
             except Exception as e:
                 print(f"[VectorMemory] Search error: {e}")
         

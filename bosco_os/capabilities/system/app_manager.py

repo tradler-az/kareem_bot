@@ -1,0 +1,425 @@
+"""
+Bosco Core - Application Manager
+List and manage installed/running applications on Linux
+"""
+
+import os
+import subprocess
+import json
+from typing import Dict, List, Any, Optional
+from pathlib import Path
+
+
+class AppManager:
+    """
+    Manages installed and running applications on Linux
+    """
+    
+    def __init__(self):
+        self.platform = os.uname().sysname
+    
+    def _run_command(self, cmd: str) -> str:
+        """Run shell command and return output"""
+        try:
+            result = subprocess.run(
+                cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            return result.stdout.strip() if result.stdout else result.stderr.strip()
+        except Exception as e:
+            return f"Error: {str(e)}"
+    
+    def list_installed_apps(self, limit: int = 50) -> str:
+        """
+        List all installed applications
+        """
+        apps = []
+        
+        # 1. Check .desktop files (most common on Linux)
+        desktop_dirs = [
+            '/usr/share/applications',
+            '/usr/local/share/applications',
+            os.path.expanduser('~/.local/share/applications')
+        ]
+        
+        desktop_apps = set()
+        for d in desktop_dirs:
+            if os.path.exists(d):
+                for f in os.listdir(d):
+                    if f.endswith('.desktop'):
+                        try:
+                            with open(os.path.join(d, f), 'r') as file:
+                                content = file.read()
+                                # Extract name
+                                name_match = [line for line in content.split('\n') 
+                                           if line.startswith('Name=')]
+                                if name_match:
+                                    name = name_match[0].replace('Name=', '')
+                                    desktop_apps.add(name)
+                        except:
+                            pass
+        
+        apps.extend(sorted(desktop_apps))
+        
+        # 2. Check snap packages
+        snap_output = self._run_command('snap list 2>/dev/null')
+        if snap_output and 'snap' not in snap_output.lower():
+            for line in snap_output.split('\n')[1:]:
+                parts = line.split()
+                if parts:
+                    apps.append(f"[Snap] {parts[0]}")
+        
+        # 3. Check flatpak packages
+        flatpak_output = self._run_command('flatpak list 2>/dev/null')
+        if flatpak_output and 'error' not in flatpak_output.lower():
+            for line in flatpak_output.split('\n')[1:]:
+                parts = line.split()
+                if parts:
+                    apps.append(f"[Flatpak] {parts[0]}")
+        
+        # Format output
+        if apps:
+            result = f"Installed Applications ({len(apps)} found):\n\n"
+            # Show desktop apps first
+            desktop_count = len([a for a in apps if not a.startswith('[')])
+            result += f"Desktop Apps: {desktop_count}\n"
+            
+            for i, app in enumerate(apps[:limit], 1):
+                result += f"{i:3}. {app}\n"
+            
+            if len(apps) > limit:
+                result += f"\n... and {len(apps) - limit} more applications"
+            
+            return result
+        else:
+            return "No applications found"
+    
+    def list_running_apps(self) -> str:
+        """
+        List all running applications/processes with windows
+        """
+        # Get running GUI applications using various methods
+        
+        # Method 1: Using wmctrl (window manager control)
+        wmctrl_output = self._run_command('wmctrl -l 2>/dev/null')
+        
+        # Method 2: Using xdotool (X11)
+        xdotool_output = self._run_command('xdotool search --onlyvisible --name ".*" 2>/dev/null | head -20')
+        
+        # Method 3: Using ps for processes with GUI
+        ps_output = self._run_command(
+            "ps -eo comm,pid,pcpu,pmem --no-headers | head -30"
+        )
+        
+        result = "Running Applications/Processes:\n\n"
+        result += f"{'PID':<8} {'CPU%':<8} {'MEM%':<8} {'Process':<30}\n"
+        result += "-" * 60 + "\n"
+        
+        processes = []
+        for line in ps_output.split('\n'):
+            parts = line.split()
+            if len(parts) >= 4:
+                try:
+                    proc = {
+                        'pid': parts[1],
+                        'cpu': parts[2],
+                        'mem': parts[3],
+                        'name': ' '.join(parts[4:])[:30]
+                    }
+                    processes.append(proc)
+                except:
+                    pass
+        
+        for p in processes[:20]:
+            result += f"{p['pid']:<8} {p['cpu']:<8} {p['mem']:<8} {p['name']:<30}\n"
+        
+        # Add window info if available
+        if wmctrl_output and 'no window' not in wmctrl_output.lower():
+            result += "\nOpen Windows:\n"
+            for line in wmctrl_output.split('\n')[:10]:
+                if line.strip():
+                    parts = line.split(None, 3)
+                    if len(parts) >= 4:
+                        result += f"  - {parts[3]}\n"
+        
+        return result
+    
+    def find_app(self, name: str) -> str:
+        """
+        Search for an application by name
+        """
+        name_lower = name.lower()
+        
+        # Search in desktop files
+        desktop_dirs = [
+            '/usr/share/applications',
+            '/usr/local/share/applications',
+            os.path.expanduser('~/.local/share/applications')
+        ]
+        
+        matches = []
+        
+        for d in desktop_dirs:
+            if os.path.exists(d):
+                for f in os.listdir(d):
+                    if f.endswith('.desktop'):
+                        try:
+                            with open(os.path.join(d, f), 'r') as file:
+                                content = file.read()
+                                
+                                # Check name and generic name
+                                for line in content.split('\n'):
+                                    if line.startswith('Name='):
+                                        app_name = line.replace('Name=', '')
+                                        if name_lower in app_name.lower():
+                                            matches.append({
+                                                'name': app_name,
+                                                'source': 'Desktop'
+                                            })
+                                    elif line.startswith('GenericName='):
+                                        gen_name = line.replace('GenericName=', '')
+                                        if name_lower in gen_name.lower():
+                                            matches.append({
+                                                'name': gen_name,
+                                                'source': 'Desktop'
+                                            })
+                        except:
+                            pass
+        
+        # Also search in running processes
+        ps_output = self._run_command(f"ps -eo comm | grep -i '{name}' | head -10")
+        if ps_output:
+            for line in ps_output.split('\n'):
+                if line.strip():
+                    matches.append({
+                        'name': line.strip(),
+                        'source': 'Process'
+                    })
+        
+        if matches:
+            result = f"Found {len(matches)} matching applications:\n\n"
+            for i, m in enumerate(matches[:20], 1):
+                result += f"{i:2}. {m['name']} [{m['source']}]\n"
+            return result
+        else:
+            return f"No applications found matching '{name}'"
+    
+    def get_app_info(self, name: str) -> str:
+        """
+        Get detailed information about an application
+        """
+        # Search in desktop files
+        desktop_dirs = [
+            '/usr/share/applications',
+            '/usr/local/share/applications',
+            os.path.expanduser('~/.local/share/applications')
+        ]
+        
+        for d in desktop_dirs:
+            if os.path.exists(d):
+                for f in os.listdir(d):
+                    if f.endswith('.desktop'):
+                        try:
+                            with open(os.path.join(d, f), 'r') as file:
+                                content = file.read()
+                                
+                                # Check if this is the right file
+                                if name.lower() in f.lower():
+                                    info = {'file': f}
+                                    
+                                    for line in content.split('\n'):
+                                        if line.startswith('Name='):
+                                            info['name'] = line.replace('Name=', '')
+                                        elif line.startswith('GenericName='):
+                                            info['generic_name'] = line.replace('GenericName=', '')
+                                        elif line.startswith('Comment='):
+                                            info['description'] = line.replace('Comment=', '')
+                                        elif line.startswith('Exec='):
+                                            info['command'] = line.replace('Exec=', '')
+                                        elif line.startswith('Icon='):
+                                            info['icon'] = line.replace('Icon=', '')
+                                        elif line.startswith('Categories='):
+                                            info['categories'] = line.replace('Categories=', '')
+                                    
+                                    result = f"Application Information:\n\n"
+                                    for key, value in info.items():
+                                        result += f"{key.capitalize()}: {value}\n"
+                                    return result
+                        except:
+                            pass
+        
+        return f"Application '{name}' not found"
+    
+    def open_app(self, name: str) -> str:
+        """
+        Open an application by name
+        """
+        # Try using gtk-launch (GNOME) or directly open .desktop
+        desktop_dirs = [
+            '/usr/share/applications',
+            '/usr/local/share/applications',
+            os.path.expanduser('~/.local/share/applications')
+        ]
+        
+        for d in desktop_dirs:
+            if os.path.exists(d):
+                for f in os.listdir(d):
+                    if f.endswith('.desktop'):
+                        try:
+                            with open(os.path.join(d, f), 'r') as file:
+                                content = file.read()
+                                
+                                for line in content.split('\n'):
+                                    if line.startswith('Name='):
+                                        app_name = line.replace('Name=', '')
+                                        if name.lower() in app_name.lower():
+                                            # Try to launch
+                                            result = self._run_command(
+                                                f"gtk-launch '{f[:-8]}' 2>/dev/null || "
+                                                f"xdg-open '{os.path.join(d, f)}' 2>/dev/null"
+                                            )
+                                            if result:
+                                                return f"Opened: {app_name}"
+                        except:
+                            pass
+        
+        # Fallback: try command directly
+        result = self._run_command(f"{name} &")
+        if result:
+            return f"Attempted to open: {name}"
+        
+        return f"Could not find or open: {name}"
+    
+    def list_by_category(self) -> str:
+        """
+        List applications by category
+        """
+        categories = {
+            'Development': [],
+            'Office': [],
+            'Graphics': [],
+            'Audio': [],
+            'Video': [],
+            'Games': [],
+            'Network': [],
+            'System': [],
+            'Utility': [],
+            'Other': []
+        }
+        
+        # Scan desktop files
+        desktop_dirs = [
+            '/usr/share/applications',
+            '/usr/local/share/applications',
+        ]
+        
+        for d in desktop_dirs:
+            if os.path.exists(d):
+                for f in os.listdir(d):
+                    if f.endswith('.desktop'):
+                        try:
+                            with open(os.path.join(d, f), 'r') as file:
+                                content = file.read()
+                                
+                                name = ''
+                                cats = ''
+                                
+                                for line in content.split('\n'):
+                                    if line.startswith('Name='):
+                                        name = line.replace('Name=', '')
+                                    elif line.startswith('Categories='):
+                                        cats = line.replace('Categories=', '')
+                                
+                                if name and cats:
+                                    categorized = False
+                                    for cat in cats.split(';'):
+                                        if cat in categories:
+                                            categories[cat].append(name)
+                                            categorized = True
+                                            break
+                                    if not categorized:
+                                        categories['Other'].append(name)
+                                elif name:
+                                    categories['Other'].append(name)
+                        except:
+                            pass
+        
+        # Format output
+        result = "Applications by Category:\n\n"
+        
+        for cat, apps in categories.items():
+            if apps:
+                result += f"\n{cat} ({len(apps)}):\n"
+                for app in sorted(apps)[:10]:
+                    result += f"  - {app}\n"
+                if len(apps) > 10:
+                    result += f"  ... and {len(apps) - 10} more\n"
+        
+        return result
+    
+    def system_info(self) -> str:
+        """
+        Get system information
+        """
+        uname = os.uname()
+        
+        result = f"System Information:\n\n"
+        result += f"Hostname: {uname.nodename}\n"
+        result += f"OS: {uname.sysname}\n"
+        result += f"Release: {uname.release}\n"
+        result += f"Version: {uname.version}\n"
+        result += f"Architecture: {uname.machine}\n"
+        
+        # Desktop environment
+        de = os.environ.get('XDG_CURRENT_DESKTOP', 'Unknown')
+        result += f"Desktop: {de}\n"
+        
+        return result
+
+
+# Global instance
+_app_manager = None
+
+def get_app_manager() -> AppManager:
+    """Get app manager instance"""
+    global _app_manager
+    if _app_manager is None:
+        _app_manager = AppManager()
+    return _app_manager
+
+
+# Convenience functions
+def list_apps(limit: int = 50) -> str:
+    """List installed applications"""
+    return get_app_manager().list_installed_apps(limit)
+
+def running_apps() -> str:
+    """List running applications"""
+    return get_app_manager().list_running_apps()
+
+def find_app(name: str) -> str:
+    """Find application by name"""
+    return get_app_manager().find_app(name)
+
+def open_application(name: str) -> str:
+    """Open application"""
+    return get_app_manager().open_app(name)
+
+
+if __name__ == "__main__":
+    manager = AppManager()
+    
+    print("=== Application Manager Test ===\n")
+    
+    print("--- System Info ---")
+    print(manager.system_info())
+    
+    print("\n--- Running Apps ---")
+    print(manager.list_running_apps())
+    
+    print("\n--- Find 'firefox' ---")
+    print(manager.find_app("firefox"))
+

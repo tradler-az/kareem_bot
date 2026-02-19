@@ -1,0 +1,457 @@
+"""
+Bosco Core - Conversation Memory System
+Enhanced memory for remembering recent talks and context
+"""
+
+import os
+import json
+from datetime import datetime, timedelta
+from typing import Dict, List, Any, Optional, Tuple
+from pathlib import Path
+from collections import defaultdict
+
+
+class ConversationMemory:
+    """
+    Enhanced conversation memory with semantic search
+    Remembers recent talks and can recall specific topics
+    """
+    
+    def __init__(self, data_dir: str = "data"):
+        self.data_dir = Path(data_dir)
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Session-based conversation storage
+        self.conversations: List[Dict] = []
+        self.current_session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Topic tracking
+        self.topics: Dict[str, List[Dict]] = defaultdict(list)
+        
+        # Important memories (explicitly remembered)
+        self.important_memories: List[Dict] = []
+        
+        # Recent context (last N messages)
+        self.recent_context: List[Dict] = []
+        self.max_context_size = 20
+        
+        # Load previous sessions
+        self._load_conversations()
+        
+        print(f"[ConversationMemory] Initialized - {len(self.conversations)} past conversations")
+    
+    def _get_storage_path(self) -> Path:
+        """Get storage file path"""
+        return self.data_dir / "conversation_memory.json"
+    
+    def _load_conversations(self):
+        """Load previous conversations"""
+        storage_path = self._get_storage_path()
+        if storage_path.exists():
+            try:
+                with open(storage_path, 'r') as f:
+                    data = json.load(f)
+                    self.conversations = data.get('conversations', [])
+                    self.important_memories = data.get('important_memories', [])
+                    
+                    # Rebuild topic index
+                    for conv in self.conversations:
+                        for topic in conv.get('topics', []):
+                            self.topics[topic].append(conv)
+                    
+                    # Keep only last 1000 conversations to save space
+                    if len(self.conversations) > 1000:
+                        self.conversations = self.conversations[-1000:]
+                        
+            except Exception as e:
+                print(f"[ConversationMemory] Load error: {e}")
+    
+    def _save_conversations(self):
+        """Save conversations to disk"""
+        storage_path = self._get_storage_path()
+        try:
+            with open(storage_path, 'w') as f:
+                json.dump({
+                    'conversations': self.conversations[-1000:],  # Save last 1000
+                    'important_memories': self.important_memories[-100:],
+                    'last_updated': datetime.now().isoformat()
+                }, f, indent=2)
+        except Exception as e:
+            print(f"[ConversationMemory] Save error: {e}")
+    
+    def add_message(self, role: str, content: str, intent: str = "", metadata: Dict = None):
+        """
+        Add a message to conversation history
+        
+        Args:
+            role: "user" or "assistant"
+            content: Message content
+            intent: Detected intent
+            metadata: Additional metadata
+        """
+        message = {
+            'role': role,
+            'content': content,
+            'timestamp': datetime.now().isoformat(),
+            'intent': intent,
+            'metadata': metadata or {}
+        }
+        
+        # Add to recent context
+        self.recent_context.append(message)
+        
+        # Trim recent context
+        if len(self.recent_context) > self.max_context_size:
+            self.recent_context = self.recent_context[-self.max_context_size:]
+        
+        # Extract topics from content
+        topics = self._extract_topics(content)
+        
+        # Store in current session
+        if not self.conversations or self.conversations[-1].get('session_id') != self.current_session_id:
+            # Start new session
+            self.conversations.append({
+                'session_id': self.current_session_id,
+                'start_time': datetime.now().isoformat(),
+                'messages': [],
+                'topics': []
+            })
+        
+        self.conversations[-1]['messages'].append(message)
+        self.conversations[-1]['topics'].extend(topics)
+        
+        # Update topic index
+        for topic in topics:
+            if topic not in self.topics:
+                self.topics[topic] = []
+            self.topics[topic].append(self.conversations[-1])
+        
+        # Save periodically
+        if len(self.conversations) % 10 == 0:
+            self._save_conversations()
+    
+    def _extract_topics(self, content: str) -> List[str]:
+        """
+        Extract topics from content using simple keyword analysis
+        """
+        # Common topic keywords
+        topic_keywords = {
+            'coding': ['code', 'program', 'python', 'javascript', 'coding', 'developer', 'git'],
+            'music': ['music', 'song', 'play', 'spotify', 'audio', 'listen'],
+            'movies': ['movie', 'film', 'watch', 'netflix', 'video'],
+            'games': ['game', 'gaming', 'play', 'steam', 'xbox', 'playstation'],
+            'news': ['news', 'happening', 'current', 'latest'],
+            'weather': ['weather', 'temperature', 'rain', 'sunny', 'cold', 'hot'],
+            'system': ['system', 'cpu', 'memory', 'disk', 'process', 'linux'],
+            'network': ['network', 'internet', 'wifi', 'connection', 'ip', 'port'],
+            'files': ['file', 'folder', 'directory', 'document', 'download'],
+            'email': ['email', 'mail', 'gmail', 'outlook'],
+            'shopping': ['buy', 'shop', 'amazon', 'order', 'purchase'],
+            'food': ['food', 'eat', 'restaurant', 'pizza', 'cook', 'dinner', 'lunch'],
+            'travel': ['travel', 'trip', 'flight', 'hotel', 'vacation', 'go'],
+            'work': ['work', 'job', 'office', 'meeting', 'project', 'deadline'],
+            'school': ['school', 'class', 'homework', 'study', 'exam', 'college'],
+            'health': ['health', 'exercise', 'gym', 'workout', 'sick', 'doctor'],
+            'social': ['friend', 'facebook', 'instagram', 'twitter', 'social', 'party']
+        }
+        
+        content_lower = content.lower()
+        topics = []
+        
+        for topic, keywords in topic_keywords.items():
+            if any(kw in content_lower for kw in keywords):
+                topics.append(topic)
+        
+        return topics
+    
+    def remember(self, content: str, label: str = "") -> str:
+        """
+        Explicitly remember important information
+        
+        Args:
+            content: Information to remember
+            label: Optional label for the memory
+            
+        Returns:
+            Confirmation message
+        """
+        memory = {
+            'content': content,
+            'label': label,
+            'timestamp': datetime.now().isoformat(),
+            'session_id': self.current_session_id
+        }
+        
+        self.important_memories.append(memory)
+        self._save_conversations()
+        
+        return f"I've remembered: {content}"
+    
+    def recall(self, topic: str = "", limit: int = 5) -> str:
+        """
+        Recall information about a topic
+        
+        Args:
+            topic: Topic to search for (empty = recent topics)
+            limit: Maximum results
+            
+        Returns:
+            Formatted recall results
+        """
+        if not topic:
+            # Return recent conversation summary
+            return self.get_recent_summary()
+        
+        topic_lower = topic.lower()
+        
+        results = []
+        
+        # Search important memories first
+        for memory in reversed(self.important_memories):
+            if topic_lower in memory['content'].lower():
+                results.append({
+                    'type': 'memory',
+                    'content': memory['content'],
+                    'timestamp': memory['timestamp'],
+                    'label': memory.get('label', '')
+                })
+        
+        # Search by topic
+        if topic_lower in self.topics:
+            for conv in reversed(self.topics[topic_lower]):
+                if conv not in [r.get('conv') for r in results if 'conv' in r]:
+                    # Get last message from this conversation
+                    if conv.get('messages'):
+                        last_msg = conv['messages'][-1]
+                        results.append({
+                            'type': 'conversation',
+                            'content': last_msg['content'],
+                            'timestamp': conv.get('start_time', ''),
+                            'topics': conv.get('topics', [])
+                        })
+        
+        # Also search in recent context
+        for msg in reversed(self.recent_context):
+            if topic_lower in msg['content'].lower():
+                results.append({
+                    'type': 'context',
+                    'content': msg['content'],
+                    'timestamp': msg['timestamp']
+                })
+        
+        if results:
+            output = f"Found {len(results)} memories about '{topic}':\n\n"
+            for i, r in enumerate(results[:limit], 1):
+                output += f"{i}. [{r['type']}] {r['content'][:150]}\n"
+                if r.get('timestamp'):
+                    output += f"   Time: {r['timestamp'][:19]}\n"
+                output += "\n"
+            return output
+        else:
+            return f"I don't have any memories about '{topic}'"
+    
+    def get_recent_summary(self, limit: int = 10) -> str:
+        """
+        Get summary of recent conversations
+        
+        Args:
+            limit: Number of recent messages to include
+            
+        Returns:
+            Formatted summary
+        """
+        if not self.recent_context:
+            return "We haven't talked much yet in this session."
+        
+        output = "Recent Conversation:\n\n"
+        
+        for msg in self.recent_context[-limit:]:
+            role_emoji = "👤" if msg['role'] == 'user' else "🤖"
+            timestamp = msg.get('timestamp', '')[11:19]  # Just time
+            
+            # Truncate long messages
+            content = msg['content'][:100]
+            if len(msg['content']) > 100:
+                content += "..."
+            
+            output += f"{role_emoji} {timestamp}: {content}\n"
+        
+        return output
+    
+    def what_did_we_discuss(self) -> str:
+        """
+        Get overview of what we've discussed
+        
+        Returns:
+            List of topics discussed
+        """
+        # Get topics from current session
+        if not self.conversations or self.conversations[-1].get('session_id') != self.current_session_id:
+            return "We haven't discussed anything yet this session."
+        
+        current_conv = self.conversations[-1]
+        topics = current_conv.get('topics', [])
+        
+        if not topics:
+            return "We haven't covered specific topics yet."
+        
+        # Count topic occurrences
+        topic_counts = defaultdict(int)
+        for topic in topics:
+            topic_counts[topic] += 1
+        
+        # Sort by count
+        sorted_topics = sorted(topic_counts.items(), key=lambda x: x[1], reverse=True)
+        
+        output = "Topics we've discussed:\n\n"
+        for topic, count in sorted_topics[:15]:
+            output += f"  • {topic.capitalize()} ({count} times)\n"
+        
+        # Add recent messages
+        output += "\nRecent messages:\n"
+        for msg in self.recent_context[-5:]:
+            role = "You" if msg['role'] == 'user' else "I"
+            content = msg['content'][:60]
+            if len(msg['content']) > 60:
+                content += "..."
+            output += f"  {role}: {content}\n"
+        
+        return output
+    
+    def forget(self, topic: str = "", memory_index: int = None) -> str:
+        """
+        Remove a topic or specific memory
+        
+        Args:
+            topic: Topic to forget
+            memory_index: Index of memory to forget
+            
+        Returns:
+            Confirmation message
+        """
+        if memory_index is not None:
+            # Forget by index
+            try:
+                removed = self.important_memories.pop(memory_index)
+                self._save_conversations()
+                return f"Forgotten: {removed.get('content', 'that memory')}"
+            except:
+                return "Could not find that memory to forget."
+        
+        if topic:
+            # Remove from topic index
+            if topic in self.topics:
+                del self.topics[topic]
+            
+            # Remove from important memories
+            original_count = len(self.important_memories)
+            self.important_memories = [
+                m for m in self.important_memories 
+                if topic.lower() not in m['content'].lower()
+            ]
+            
+            removed_count = original_count - len(self.important_memories)
+            
+            if removed_count > 0:
+                self._save_conversations()
+                return f"Forgotten {removed_count} memories about '{topic}'"
+            else:
+                return f"No memories found about '{topic}' to forget"
+        
+        return "Please specify what to forget (topic or memory index)"
+    
+    def get_context(self) -> str:
+        """
+        Get formatted context for LLM
+        
+        Returns:
+            Context string for conversation continuity
+        """
+        if not self.recent_context:
+            return ""
+        
+        # Get last few messages
+        context_parts = []
+        for msg in self.recent_context[-5:]:
+            role = "User" if msg['role'] == 'user' else "Assistant"
+            context_parts.append(f"{role}: {msg['content']}")
+        
+        return "\n".join(context_parts)
+    
+    def get_stats(self) -> Dict:
+        """Get memory statistics"""
+        return {
+            'total_conversations': len(self.conversations),
+            'total_messages': sum(len(c.get('messages', [])) for c in self.conversations),
+            'important_memories': len(self.important_memories),
+            'topics_tracked': len(self.topics),
+            'current_session': self.current_session_id,
+            'recent_messages': len(self.recent_context)
+        }
+    
+    def start_new_session(self):
+        """Start a new conversation session"""
+        self.current_session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.recent_context = []
+        print(f"[ConversationMemory] New session: {self.current_session_id}")
+
+
+# Global instance
+_conversation_memory = None
+
+def get_conversation_memory() -> ConversationMemory:
+    """Get conversation memory instance"""
+    global _conversation_memory
+    if _conversation_memory is None:
+        _conversation_memory = ConversationMemory()
+    return _conversation_memory
+
+
+# Convenience functions
+def remember_info(content: str, label: str = "") -> str:
+    """Remember important information"""
+    return get_conversation_memory().remember(content, label)
+
+def recall_topic(topic: str = "") -> str:
+    """Recall information about a topic"""
+    return get_conversation_memory().recall(topic)
+
+def recent_discussion() -> str:
+    """Get recent discussion summary"""
+    return get_conversation_memory().what_did_we_discuss()
+
+def forget_topic(topic: str = "") -> str:
+    """Forget a topic"""
+    return get_conversation_memory().forget(topic)
+
+
+if __name__ == "__main__":
+    # Test the conversation memory
+    print("=== Conversation Memory Test ===\n")
+    
+    memory = ConversationMemory()
+    
+    # Add some test messages
+    memory.add_message("user", "I love coding in Python and working on AI projects")
+    memory.add_message("assistant", "That's great! AI and Python are a powerful combination.")
+    memory.add_message("user", "My favorite game is Minecraft")
+    memory.add_message("user", "Remember that my birthday is next month")
+    
+    # Test remembering
+    print("\n--- Remembering ---")
+    print(memory.remember("The user prefers dark mode interface", "preference"))
+    
+    # Test recall
+    print("\n--- Recall 'coding' ---")
+    print(memory.recall("coding"))
+    
+    print("\n--- Recall 'game' ---")
+    print(memory.recall("game"))
+    
+    # Test what did we discuss
+    print("\n--- What did we discuss ---")
+    print(memory.what_did_we_discuss())
+    
+    print("\n--- Stats ---")
+    print(memory.get_stats())
+

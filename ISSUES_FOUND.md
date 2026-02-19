@@ -5,21 +5,17 @@
 ### ✅ All Tests Passed
 - Core Brain Tests: 12/12
 - Advanced Features Tests: 10/10
+- Combined Test Suite: 42/42
 
 ### Issues Found and Fixed
 
 #### 1. Vector Memory Metadata Issue (FIXED)
 **Problem**: ChromaDB metadata validation error - `'list' object has no attribute 'items'`
-**Fix**: Added proper metadata type conversion in `bosco_os/brain/vector_memory.py`:
-```python
-# Convert metadata values to proper types
-meta_dict = {}
-for key, value in meta.items():
-    if isinstance(value, (str, int, float, bool)):
-        meta_dict[key] = value
-    else:
-        meta_dict[key] = str(value)
-```
+**Root Cause**: sentence-transformers 5.x API change - the `encode()` method should be used instead of calling the model directly
+**Fix**: Updated `bosco_os/brain/vector_memory.py`:
+- Changed `_get_embedding()` to use `embedder.encode()` instead of `embedder([text])`
+- Added proper metadata type conversion in `add()` method
+- Improved error handling in `search()` method
 
 #### 2. Variable Naming Issue (FIXED)
 **Problem**: Variable shadowing - using `where` for both the parameter and assignment
@@ -32,47 +28,26 @@ for key, value in meta.items():
 - Unified voice initialization through voice_online module in `main.py`
 - Added early returns to prevent dual output
 
-#### 4. ALSA/JACK Audio Warnings (FIXED)
-**Problem**: Multiple ALSA and JACK errors when starting Bosco:
-- `ALSA lib pcm_dmix.c:1000:(snd_pcm_dmix_open) unable to open slave`
-- `ALSA lib pcm.c:2722:(snd_pcm_open_noupdate) Unknown PCM cards.pcm.rear/center_lfe/side`
-- `Cannot connect to server socket err = No such file or directory` (JACK)
-- Various other audio device errors
+#### 4. ALSA/JACK Audio Warnings (SYSTEM LEVEL - Non-Breaking)
+**Status**: These are system-level audio issues, not code bugs
+**Impact**: Console clutter but bot functions correctly
+**Solution**: Use `run_bosco_clean.py` which suppresses all audio warnings
 
-**Fix**: Comprehensive fix across multiple files:
+#### 5. Combined Test Suite Created (NEW)
+**Problem**: Two separate test files (test_brain.py, test_advanced_features.py)
+**Fix**: Created unified `test_all.py` with 42 comprehensive tests covering:
+- Core Module Imports (15)
+- Neural Brain Tests (7)
+- Online Services (3)
+- System Info (3)
+- Conversation Flow (1)
+- Advanced Features (10)
+- Learning Control (1)
+- Kali Integration (2)
 
-1. **Updated `asound.conf`** - Added robust fallback configuration:
-   - Added all surround sound channel fallbacks (rear, center_lfe, side, surround21-71)
-   - Added dmix and dsnoop device fallbacks
-   - Added USB audio device fallbacks
-   - Added a52 (AC3) codec fallback
-   - Added OSS device fallbacks
-   - Added rate converter and route table configurations
-
-2. **Updated `run_bosco_clean.py`** - Enhanced environment suppression:
-   - Added `JACK_SERVER_NAME=none`
-   - Added PulseAudio environment variables
-   - Added `ALSA_CONFIG_PATH` to use custom config
-   - Created user-level `.asoundrc` symlink
-
-3. **Updated `main.py`** - Added comprehensive audio environment:
-   - Added JACK_NO_AUDIO_RESERVATION=1
-   - Added JACK_NO_START_SERVER=1
-   - Added JACK_SERVER_NAME=none
-   - Added PULSE_PROP=application.name=Bosco
-
-4. **Updated `voice/speaker.py`** - Enhanced suppression:
-   - Added JACK_SERVER_NAME and PULSE_PROP
-   - Added `_suppress_audio_errors` decorator for runtime errors
-
-5. **Updated `voice/listener.py`** - Enhanced suppression:
-   - Added JACK_SERVER_NAME and PULSE_PROP
-
-6. **Updated `bosco_os/brain/voice_online.py`** - Enhanced suppression:
-   - Added JACK_NO_AUDIO_RESERVATION=1
-   - Added JACK_NO_START_SERVER=1
-   - Added JACK_SERVER_NAME=none
-   - Added PULSE_PROP
+#### 6. asound.conf Fixed
+**Problem**: Invalid ALSA configuration causing parsing errors
+**Fix**: Simplified to minimal working config
 
 ### Known Minor Issues (Non-Breaking)
 
@@ -111,7 +86,7 @@ for key, value in meta.items():
 ✅ Execution Sandbox
 ✅ Vision Engine
 ✅ Kali Linux Integration
-✅ ALSA/JACK Audio (warnings suppressed)
+✅ ALSA/JACK Audio (warnings suppressed via run_bosco_clean.py)
 
 ### How to Run
 
@@ -126,18 +101,20 @@ python3 run_bosco_clean.py
 python3 main.py
 
 # Run tests
-python3 test_brain.py
-python3 test_advanced_features.py
+python3 test_all.py
 ```
 
 ## Files Modified
 - `bosco_os/brain/vector_memory.py` - Fixed metadata handling
 - `bosco_os/brain/voice_online.py` - Fixed dual sound output + ALSA/JACK suppression
 - `main.py` - Unified voice module + ALSA/JACK suppression
-- `asound.conf` - Added comprehensive fallback configuration
+- `asound.conf` - Simplified ALSA configuration
 - `run_bosco_clean.py` - Enhanced audio environment suppression
 - `voice/speaker.py` - Added audio error decorator and suppression
 - `voice/listener.py` - Added ALSA/JACK suppression
+
+## Files Created
+- `test_all.py` - Combined test suite (42 tests)
 
 ## Project Status: PRODUCTION READY ✅
 

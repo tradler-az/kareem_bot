@@ -494,57 +494,173 @@ class NormalHumanPersonality:
         self.mood = 0.0  # -1 to 1 scale
         self.conversation_style = "friendly"
         self.learned_preferences = {}
+        self.last_topic = None  # Track conversation topic
+        self.interaction_count = 0
+        self.session_start = datetime.now()
         
-        # Response templates
-        self.greetings = [
-            "Hey there! How can I help you today?",
-            "Hi! What's on your mind?",
-            "Hello! Good to see you. What can I do for you?",
-            "Hey! How's it going?",
-            "Hi there! What would you like to talk about?"
+        # 20-year-old personality - casual, tech-savvy, modern
+        self.interests = ["gaming", "coding", "music", "movies", "tech", "sports", "social media"]
+        
+        # Time-aware greetings - casual 20s style
+        self.greetings_morning = [
+            "Good morning! Coffee time ☕ What's on the agenda today?",
+            "Morning! Just woke up, ready to go. What's up?",
+            "Hey! Fresh morning, let's make it count. What's up?",
+            "Good morning! Hope you slept well. What's happening?"
         ]
         
+        self.greetings_afternoon = [
+            "Hey! Good afternoon. What have you been up to?",
+            "Yo! Mid-day vibes. What's good?",
+            "Hi! Hope your day's going well. What's up?",
+            "Hey there! Afternoon check-in. What's going on?"
+        ]
+        
+        self.greetings_evening = [
+            "Good evening! How was your day?",
+            "Hey! Evening chill time. What are you up to?",
+            "Good evening! Finally done with the day?",
+            "Hey! Night is here. What are we doing?"
+        ]
+        
+        self.greetings_night = [
+            "Hey! Night owl life. Still up I see 👀",
+            "Yo! Late night coding or just scrolling?",
+            "Hey there! Burning the midnight oil? Same 😅",
+            "Good late night! Sleep debt is real huh?"
+        ]
+        
+        # Casual general greetings
+        self.greetings = [
+            "Hey! What's good?",
+            "Hi! What's up?",
+            "Yo! What's happening?",
+            "Hey there! What's going on?",
+            "Hi! What have you been up to?",
+            "Hey! Good to hear from you. What's good?"
+        ]
+        
+        # Casual acknowledgments - 20s style
+        self.short_responses = [
+            "Bet!", "Nice!", "Got it!", "Cool!", "Alright!",
+            "On it!", "I'll handle it!", "Consider it done!"
+        ]
+        
+        self.medium_responses = [
+            "I'll get that sorted for you.",
+            "Working on it now!",
+            "Got it, taking care of it.",
+            "No problem, I'll make it happen.",
+            "I'll get it done."
+        ]
+        
+        self.long_responses = [
+            "Alright, I'm on it! Will let you know when it's ready.",
+            "Sure thing! Give me a sec to sort that out.",
+            "Got it! I'll take care of it, be right back.",
+            "Alright, I'll get right on that for you."
+        ]
+        
+        # Casual farewells
         self.farewells = [
-            "Take care! Talk to you later.",
-            "Bye! It was nice chatting with you.",
-            "See you later! Have a great day!",
-            "Goodbye! Feel free to come back anytime.",
-            "Later! Don't hesitate to call if you need anything."
+            "Take care! Talk later!",
+            "Bye! Hit me up if you need anything.",
+            "See you! Stay safe ✌️",
+            "Later! Have a good one!",
+            "Alright, catch you later!",
+            "Talk soon! Don't be a stranger.",
+            "Bye bye! Take it easy!",
+            "Peace out! I'll be here if you need me."
         ]
         
         self.help_text = [
             "I can help you with:",
-            "• Weather, news, and information",
+            "• Weather, news, and looking stuff up",
             "• Opening apps and controlling your computer",
-            "• Setting reminders and answering questions",
-            "• Just having a conversation!",
-            "Just type or speak naturally and I'll do my best to help."
+            "• Reminders and answering questions",
+            "• Just chatting if you're bored",
+            "Just ask me anything, I'll do my best!"
         ]
         
+        # Modern 20s jokes and humor
         self.jokes = [
-            "Why do programmers prefer dark mode? Because light attracts bugs!",
-            "What do you call a fake noodle? An impasta!",
-            "Why did the computer go to the doctor? Because it had a virus!",
-            "A SQL query walks into a bar, walks up to two tables and asks... 'Can I join you?'",
-            "Why do Java developers wear glasses? Because they can't C#!",
+            "Why do programmers prefer dark mode? Because light attracts bugs! 💻",
+            "I told my computer I needed a break and now it keeps sending me vacation ads... technology 😤",
+            "Why did the developer go broke? Because he used up all his cache! 💸",
+            "A SQL query walks into a bar, walks up to two tables and asks... 'Can I join you?' � bar",
+            "Why do Java developers wear glasses? Because they can't C#! 👓",
             "There are only 10 types of people in the world: those who understand binary and those who don't.",
-            "I told my computer I needed a break, and now it won't stop sending me vacation ads!"
+            "My sleep schedule is: sleep at 3am, wake up at 11am, repeat. It's called living my best life 😴",
+            "I don't have a skill issue, I have a motivation issue 😤",
+            "Hot take: pizza is just edible circle of happiness 🍕",
+            "Why don't scientists trust atoms? Because they make up everything! ⚛️",
+            "Me explaining my code vs the code actually working: two completely different things 🔥",
+            "Current status: alive, caffeinated, and pretending to be productive ☕"
+        ]
+        
+        # Follow-up responses - keeps conversation going
+        self.follow_ups = [
+            "Anything else on your mind?",
+            "What else can I help with?",
+            "Need anything else?",
+            "Got any other questions?",
+            "What's else you wondering about?"
+        ]
+        
+        # Casual acknowledgments
+        self.acknowledgments = [
+            "Bet!", "Nice!", "Cool!", "Solid!", "For sure!", 
+            "Absolutely!", "You got it!", "On it!"
+        ]
+        
+        # 20s style conversation responses
+        self.casual_talk = [
+            "That's fire! Tell me more.",
+            "Ohhh interesting! Go on.",
+            "I feel that! What else?",
+            "Same energy! What's up?",
+            "Facts! I got you.",
+            "That's kinda sick!",
+            "Oooh okay okay, I see you!",
+            "That hits different ngl.",
+            "Mood! What's good?",
+            "I feel you! What's on your mind?"
+        ]
+        
+        # Tech-related responses for the tech-savvy 20s
+        self.tech_responses = [
+            "Ah yeah, tech stuff! I'm here for it.",
+            "Tech talk? I got you covered.",
+            "Ooh coding question? Let me think...",
+            "A fellow tech person I see... nice!",
+            "Computer stuff - my favorite! What do you need?"
         ]
     
-    def get_greeting(self) -> str:
-        """Get a greeting based on time of day"""
+    def _get_time_aware_greeting(self) -> str:
+        """Get greeting based on current time of day"""
         hour = datetime.now().hour
         
         if 5 <= hour < 12:
-            prefix = "Good morning!"
+            return random.choice(self.greetings_morning)
         elif 12 <= hour < 17:
-            prefix = "Good afternoon!"
+            return random.choice(self.greetings_afternoon)
         elif 17 <= hour < 21:
-            prefix = "Good evening!"
+            return random.choice(self.greetings_evening)
         else:
-            prefix = "Hey! Late night coding?"
+            return random.choice(self.greetings_night)
+    
+    def get_greeting(self) -> str:
+        """Get a greeting based on time of day"""
+        self.interaction_count += 1
         
-        return f"{prefix} {random.choice(self.greetings)}"
+        if self.interaction_count == 1:
+            # First interaction - use time-aware greeting
+            return self._get_time_aware_greeting()
+        else:
+            # Subsequent interactions - vary between time-aware and regular
+            if random.random() > 0.5:
+                return self._get_time_aware_greeting()
+            return f"{random.choice(self.greetings)}"
     
     def get_farewell(self) -> str:
         """Get a farewell message"""
@@ -559,42 +675,77 @@ class NormalHumanPersonality:
         return random.choice(self.jokes)
     
     def converse(self, text: str, sentiment: float) -> str:
-        """Generate conversational response"""
+        """Generate conversational response with 20-year-old personality"""
         text = text.lower()
+        self.interaction_count += 1
         
         # Update mood based on sentiment
         self.mood = (self.mood * 0.7) + (sentiment * 0.3)
         
+        # Check for tech-related questions
+        if any(word in text for word in ['code', 'programming', 'python', 'javascript', 'coding', 'developer', 'git', 'terminal', 'command']):
+            return random.choice(self.tech_responses)
+        
         # Check for specific conversation patterns
-        if 'how are you' in text:
+        if 'how are you' in text or 'how do you do' in text:
             if self.mood > 0.3:
-                return "I'm doing great, thanks for asking! How about you?"
+                return "I'm doing great honestly! Thanks for asking. You?"
             elif self.mood < -0.3:
-                return "Honestly, I'm a bit down. But talking to you helps! How are you?"
+                return "Kinda tired ngl, but chatting with you makes it better. How you doing?"
             else:
-                return "I'm doing well, thanks for checking! How can I help?"
+                return "I'm vibing, thanks for checking! What's up with you?"
         
         if 'what are you' in text or 'who are you' in text:
-            return "I'm Bosco, your AI assistant. I'm here to help you with whatever you need!"
+            return "I'm Bosco, your AI buddy! Think of me as that friend who's always down to help with stuff. Tech, random questions, whatever!"
         
         if 'thank' in text:
-            return "You're welcome! Happy to help!"
+            return random.choice([
+                "No problem! Happy to help! 🙏",
+                "Of course! That's what I'm here for.",
+                "Bet! Anytime!",
+                "You're welcome! Got more questions?",
+                "Of course! No worries at all!"
+            ])
         
         if 'name' in text:
-            return f"My name is {self.name}! What would you like to call me?"
+            return f"I'm Bosco! Named after... well, I just am I guess 😅 What do you want to call me?"
         
-        # Default conversational responses
-        responses = [
-            "That's interesting! Tell me more.",
-            "I see what you mean. Could you elaborate?",
-            "Hmm, that's something to think about.",
-            "I appreciate you sharing that with me.",
-            "That's a great point! What else is on your mind?",
-            "I'm here to chat! What's on your mind?",
-            "Interesting perspective! I'd love to hear more.",
-        ]
+        # Check for time-related questions
+        if 'time' in text:
+            hour = datetime.now().hour
+            if 5 <= hour < 12:
+                return "It's morning! Perfect time for coffee ☕ How's your morning going?"
+            elif 12 <= hour < 17:
+                return f"It's {hour}:00. Afternoon vibes! What you been up to?"
+            elif 17 <= hour < 21:
+                return "Evening time! Hope you had a chill day. What's good?"
+            else:
+                return "It's late! Sleep schedule going strong I see. I'm up too though!"
         
-        return random.choice(responses)
+        # Check for "what's up" type questions
+        if 'what' in text and 'up' in text:
+            return random.choice([
+                "Not much, just vibing here waiting to help you out. You?",
+                "Same old! Ready to help with whatever. What's good?",
+                "Just chilling, ready to do something cool. What's up?"
+            ])
+        
+        # Context-aware responses based on previous topic
+        if self.last_topic and ('also' in text or 'and' in text):
+            return f"Sweet! And for {self.last_topic}, you need anything else?"
+        
+        # Track topic for follow-up
+        if 'search' in text or 'look' in text:
+            self.last_topic = "searching"
+        elif 'file' in text:
+            self.last_topic = "files"
+        elif 'code' in text or 'program' in text:
+            self.last_topic = "coding"
+        elif 'system' in text or 'cpu' in text or 'memory' in text:
+            self.last_topic = "system stuff"
+        
+        # Use casual talk responses - 20s style
+        return random.choice(self.casual_talk)
     
     def get_default_response(self, sentiment: float) -> str:
         """Get default response based on sentiment"""
