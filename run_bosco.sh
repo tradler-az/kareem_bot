@@ -1,11 +1,23 @@
 #!/bin/bash
-# Run Bosco Core with ALSA/PulseAudio/Jack warnings suppressed
+# Bosco Core startup wrapper - suppresses ALSA/Jack warnings
 
-# Set environment variables
+# Suppress JACK audio reservation warnings
+export JACK_NO_AUDIO_RESERVATION=1
+
+# Use dummy SDL audio driver  
 export SDL_AUDIODRIVER=dummy
-export PYGAME_HIDE_SUPPORT_PROMPT=1
-export JACK_NO_START_SERVER=1
 
-# Run Python and filter out ALSA/Jack/PulseAudio warnings from stderr
-python main.py 2> >(grep -vE "ALSA lib|Jack|pcm_|snd_pcm|JackShm|Cannot connect to server|jack server is not running" >&2)
+# Suppress pygame support prompt
+export PYGAME_HIDE_SUPPORT_PROMPT=1
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# Run with venv Python if available
+if [ -d "venv" ]; then
+    exec venv/bin/python "$@"
+else
+    exec python3 "$@"
+fi
 

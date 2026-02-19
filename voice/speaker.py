@@ -4,6 +4,18 @@ Custom TTS with voice customization and sound effects
 """
 
 import os
+import sys
+import io
+
+# Suppress ALSA and JACK warnings at import time
+os.environ.setdefault('SDL_AUDIODRIVER', 'dummy')
+os.environ.setdefault('JACK_NO_AUDIO_RESERVATION', '1')
+os.environ.setdefault('JACK_NO_START_SERVER', '1')
+
+# Suppress stderr temporarily during critical imports
+_OLD_STDERR = sys.stderr
+sys.stderr = io.StringIO()
+
 import threading
 import queue
 from typing import Optional, List
@@ -23,6 +35,9 @@ try:
 except ImportError:
     GTTS_AVAILABLE = False
     print("gTTS not available")
+
+# Restore stderr
+sys.stderr = _OLD_STDERR
 
 
 class Speaker:

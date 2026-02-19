@@ -3,10 +3,23 @@ Bosco Core - Enhanced Voice Listener
 Advanced voice recognition with noise handling and multiple listening modes
 """
 
+import os
+import sys
+import io
+import warnings
+
+# Suppress ALSA and JACK warnings at import time
+os.environ.setdefault('SDL_AUDIODRIVER', 'dummy')
+os.environ.setdefault('JACK_NO_AUDIO_RESERVATION', '1')
+os.environ.setdefault('JACK_NO_START_SERVER', '1')
+
+# Suppress stderr temporarily during critical imports
+_OLD_STDERR = sys.stderr
+sys.stderr = io.StringIO()
+
 import time
 import threading
 import queue
-import os
 import json
 from typing import Optional, Callable, List
 import re
@@ -17,6 +30,15 @@ try:
 except ImportError:
     SPEECH_RECOGNITION_AVAILABLE = False
     print("speech_recognition not available")
+
+# Restore stderr but keep error messages
+_captured_stderr = sys.stderr.getvalue()
+sys.stderr = _OLD_STDERR
+
+# Log errors at debug level only
+if _captured_stderr:
+    import logging
+    logging.getLogger(__name__).debug(f"Audio init messages: {_captured_stderr[:200]}...")
 
 
 def load_config():
@@ -67,9 +89,16 @@ class Listener:
         self.recognizer.pause_threshold = self.pause_threshold
         self.recognizer.phrase_threshold = self.phrase_threshold
         
-        # Get microphone
+        # Get microphone - suppress ALSA/Jack warnings during init
         try:
-            self.microphone = sr.Microphone()
+            import io
+            import sys
+            old_stderr = sys.stderr
+            sys.stderr = io.StringIO()
+            try:
+                self.microphone = sr.Microphone()
+            finally:
+                sys.stderr = old_stderr
         except Exception as e:
             print(f"Microphone error: {e}")
     

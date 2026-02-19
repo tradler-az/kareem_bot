@@ -16,6 +16,7 @@ def suppress_audio_warnings():
     os.environ['SDL_AUDIODRIVER'] = 'dummy'
     os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
     os.environ['JACK_NO_START_SERVER'] = '1'
+    os.environ['JACK_NO_AUDIO_RESERVATION'] = '1'  # Prevent Jack from claiming audio devices
     
     # Suppress Python warnings
     warnings.filterwarnings('ignore', category=DeprecationWarning)

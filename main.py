@@ -31,16 +31,16 @@ VERSION = config.get('version', '3.0.0')
 print(f"""
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
-║     ██╗   ██╗███████╗██████╗ ████████╗███████╗██╗  ██╗    ║
-║     ██║   ██║██╔════╝██╔══██╗╚══██╔══╝██╔════╝╚██╗██╔╝    ║
-║     ██║   ██║█████╗  ██████╔╝   ██║   █████╗   ╚███╔╝     ║
-║     ╚██╗ ██╔╝██╔══╝  ██╔══██╗   ██║   ██╔══╝   ██╔██╗     ║
-║      ╚████╔╝ ███████╗██║  ██║   ██║   ███████╗██╔╝ ██╗    ║
-║       ╚═══╝  ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝    ║
+║     ██╗   ██╗███████╗██████╗ ████████╗███████╗██╗  ██╗       ║
+║     ██║   ██║██╔════╝██╔══██╗╚══██╔══╝██╔════╝╚██╗██╔╝       ║
+║     ██║   ██║█████╗  ██████╔╝   ██║   █████╗   ╚███╔╝        ║
+║     ╚██╗ ██╔╝██╔══╝  ██╔══██╗   ██║   ██╔══╝   ██╔██╗        ║
+║      ╚████╔╝ ███████╗██║  ██║   ██║   ███████╗██╔╝ ██╗       ║
+║       ╚═══╝  ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝       ║
 ║                                                              ║
 ║        ML-POWERED NEURAL BRAIN + FULL PC CONTROL             ║
-║                    + KALI LINUX SUPPORT                       ║
-║                        v{VERSION}                             ║
+║                    + KALI LINUX SUPPORT                      ║
+║                        v{VERSION}                            ║
 ╚══════════════════════════════════════════════════════════════╝
 """)
 
@@ -158,14 +158,14 @@ def listen():
         import speech_recognition as sr
         r = sr.Recognizer()
         with sr.Microphone() as source:
-            print("🎤 Listening...")
-            r.adjust_for_ambient_noise(source, duration=0.5)
+            print("Listening...")
+            r.adjust_for_ambient_noise(source, duration=3.5)
             audio = r.listen(source, timeout=5)
         cmd = r.recognize_google(audio).lower()
         print(f"👤 You: {cmd}")
         return cmd
     except:
-        return input("⌨️ Type: ")
+        return input("Type: ")
 
 
 def process_command(cmd):
@@ -426,103 +426,103 @@ Be helpful and execute user requests!"""
 
 def get_help_text():
     return f"""
-╔══════════════════ {AI_NAME} Full Control + Kali Linux Commands ══════════════════╗
-║                                                                 ║
-║  🖥️ TERMINAL:                                                   ║
-║    • "run [command]" - Execute terminal command               ║
-║    • "open terminal" - Open terminal app                       ║
-║                                                                 ║
-║  🌐 WEB:                                                        ║
-║    • "search [query]" - Search the web                        ║
-║    • "wikipedia [topic]" - Get Wikipedia info                  ║
-║    • "weather" - Check weather                                 ║
-║    • "news" - Latest news                                      ║
-║                                                                 ║
-║  📂 FILES:                                                      ║
-║    • "list files [path]" - List directory                      ║
-║    • "find file [name]" - Search for files                     ║
-║    • "read file [path]" - Read file content                   ║
-║    • "delete file [path]" - Delete a file                     ║
-║    • "create file [name] with [content]" - Create file        ║
-║                                                                 ║
-║  📱 APPS:                                                       ║
-║    • "open [app]" - Open application                           ║
-║    • "close [app]" - Close application                         ║
-║                                                                 ║
-║  💻 SYSTEM:                                                     ║
-║    • "system info" - Full system information                   ║
-║    • "processes" / "list processes" - Running processes        ║
-║    • "screenshot" - Take screenshot                            ║
-║    • "cpu" / "memory" / "disk" - Quick stats                  ║
-║                                                                 ║
-║  ⌨️ INPUT:                                                      ║
-║    • "type [text]" - Type text                                 ║
-║    • "press [key]" - Press a key                               ║
-║    • "click" - Mouse click                                     ║
-║                                                                 ║
-║  📋 CLIPBOARD:                                                  ║
-║    • "clipboard" - Show clipboard                              ║
-║    • "copy [text]" - Copy to clipboard                         ║
-║                                                                 ║
-║  📦 SYSTEM MAINTENANCE:                                         ║
-║    • "install [package]" - Install package (needs sudo)         ║
-║    • "update" - Update system (apt update)                    ║
-║    • "git clone [url]" - Clone repository                      ║
-║    • "download [url]" - Download file                          ║
-║                                                                 ║
-║  ════════════════════ KALI LINUX SPECIFIC ════════════════════ ║
-║                                                                 ║
-║  🛠️ PROCESS MANAGEMENT:                                        ║
-║    • "list processes" - Show top processes                     ║
-║    • "find process [name]" - Find process by name             ║
-║    • "kill process [PID]" - Kill a process                    ║
-║                                                                 ║
-║  🌐 NETWORK OPERATIONS:                                          ║
-║    • "network status" / "check network" - Network config       ║
-║    • "listening ports" / "check ports" - Show open ports       ║
-║    • "connections" - Show active connections                  ║
-║    • "nmap scan [target]" - Run nmap scan                     ║
-║                                                                 ║
-║  ⚙️ SERVICES:                                                   ║
-║    • "list services" - Show running services                    ║
-║    • "service status [name]" - Check service status            ║
-║    • "start service [name]" - Start a service                  ║
-║    • "stop service [name]" - Stop a service                    ║
-║                                                                 ║
-║  📦 PACKAGE MANAGEMENT:                                         ║
-║    • "check package [name]" - Check if package installed       ║
-║    • "list packages" - List installed packages                 ║
-║    • "apt update" - Update package lists                       ║
-║    • "apt upgrade" - Upgrade system                            ║
-║                                                                 ║
-║  🛡️ SECURITY & FIREWALL:                                        ║
-║    • "check iptables" - Show iptables rules                    ║
-║    • "ufw status" - Show UFW status                           ║
-║    • "check root" - Check if running as root                   ║
-║    • "kali tools" - Check installed Kali tools                 ║
-║                                                                 ║
-║  📝 LOGS & ANALYSIS:                                            ║
-║    • "system logs" / "logs" - Show system logs                ║
-║    • "auth logs" - Show authentication logs                    ║
-║    • "dmesg" / "kernel logs" - Show kernel messages            ║
-║                                                                 ║
-║  👥 USER MANAGEMENT:                                            ║
-║    • "list users" - Show system users                           ║
-║    • "list groups" - Show system groups                        ║
-║                                                                 ║
-║  💾 DISK & FILES:                                              ║
-║    • "disk usage" - Show disk space                            ║
-║    • "mounts" - Show mount points                              ║
-║    • "find large files" - Find big files                       ║
-║    • "file info [path]" - Show file permissions                ║
-║                                                                 ║
-║  💬 CONVERSATION:                                               ║
-║    • Just talk naturally!                                      ║
-║    • "joke" - Tell a joke                                     ║
-║    • "help" - Show this menu                                   ║
-║                                                                 ║
-║  🔴 Say "exit" to quit                                        ║
-╚══════════════════════════════════════════════════════════════════╝
+╔════════════ {AI_NAME} Full Control + Kali Linux Commands ════════════╗
+║                                                                      ║
+║     🖥️ TERMINAL:                                                     ║
+║       • "run [command]" - Execute terminal command                   ║
+║       • "open terminal" - Open terminal app                          ║
+║                                                                      ║
+║     🌐 WEB:                                                          ║
+║       • "search [query]" - Search the web                            ║
+║       • "wikipedia [topic]" - Get Wikipedia info                     ║
+║       • "weather" - Check weather                                    ║
+║       • "news" - Latest news                                         ║
+║                                                                      ║
+║     📂 FILES:                                                        ║
+║       • "list files [path]" - List directory                         ║
+║       • "find file [name]" - Search for files                        ║
+║       • "read file [path]" - Read file content                       ║
+║       • "delete file [path]" - Delete a file                         ║
+║       • "create file [name] with [content]" - Create file            ║
+║                                                                      ║
+║     📱 APPS:                                                         ║
+║       • "open [app]" - Open application                              ║
+║       • "close [app]" - Close application                            ║
+║                                                                      ║
+║     💻 SYSTEM:                                                       ║
+║       • "system info" - Full system information                      ║
+║       • "processes" / "list processes" - Running processes           ║
+║       • "screenshot" - Take screenshot                               ║
+║       • "cpu" / "memory" / "disk" - Quick stats                      ║
+║                                                                      ║
+║     ⌨️ INPUT:                                                        ║
+║       • "type [text]" - Type text                                    ║
+║       • "press [key]" - Press a key                                  ║
+║       • "click" - Mouse click                                        ║
+║                                                                      ║
+║     📋 CLIPBOARD:                                                    ║
+║       • "clipboard" - Show clipboard                                 ║
+║       • "copy [text]" - Copy to clipboard                            ║
+║                                                                      ║
+║     📦 SYSTEM MAINTENANCE:                                           ║
+║       • "install [package]" - Install package (needs sudo)           ║
+║       • "update" - Update system (apt update)                        ║
+║       • "git clone [url]" - Clone repository                         ║
+║       • "download [url]" - Download file                             ║
+║                                                                      ║
+║  ═══════════════════════ KALI LINUX SPECIFIC ═══════════════════════ ║
+║                                                                      ║
+║     🛠️ PROCESS MANAGEMENT:                                           ║   
+║       • "list processes" - Show top processes                        ║   
+║       • "find process [name]" - Find process by name                 ║   
+║       • "kill process [PID]" - Kill a process                        ║   
+║                                                                      ║   
+║     🌐 NETWORK OPERATIONS:                                           ║   
+║       • "network status" / "check network" - Network config          ║   
+║       • "listening ports" / "check ports" - Show open ports          ║   
+║       • "connections" - Show active connections                      ║   
+║       • "nmap scan [target]" - Run nmap scan                         ║   
+║                                                                      ║   
+║     ⚙️ SERVICES:                                                     ║   
+║       • "list services" - Show running services                      ║   
+║       • "service status [name]" - Check service status               ║   
+║       • "start service [name]" - Start a service                     ║   
+║       • "stop service [name]" - Stop a service                       ║   
+║                                                                      ║   
+║     📦 PACKAGE MANAGEMENT:                                           ║   
+║       • "check package [name]" - Check if package installed          ║   
+║       • "list packages" - List installed packages                    ║   
+║       • "apt update" - Update package lists                          ║   
+║       • "apt upgrade" - Upgrade system                               ║   
+║                                                                      ║   
+║     🛡️ SECURITY & FIREWALL:                                          ║   
+║       • "check iptables" - Show iptables rules                       ║   
+║       • "ufw status" - Show UFW status                               ║   
+║       • "check root" - Check if running as root                      ║   
+║       • "kali tools" - Check installed Kali tools                    ║   
+║                                                                      ║   
+║     📝 LOGS & ANALYSIS:                                              ║   
+║       • "system logs" / "logs" - Show system logs                    ║   
+║       • "auth logs" - Show authentication logs                       ║   
+║       • "dmesg" / "kernel logs" - Show kernel messages               ║   
+║                                                                      ║   
+║     👥 USER MANAGEMENT:                                              ║   
+║       • "list users" - Show system users                             ║   
+║       • "list groups" - Show system groups                           ║   
+║                                                                      ║   
+║     💾 DISK & FILES:                                                 ║   
+║       • "disk usage" - Show disk space                               ║   
+║       • "mounts" - Show mount points                                 ║   
+║       • "find large files" - Find big files                          ║   
+║       • "file info [path]" - Show file permissions                   ║   
+║                                                                      ║   
+║     💬 CONVERSATION:                                                 ║   
+║       • Just talk naturally!                                         ║   
+║       • "joke" - Tell a joke                                         ║   
+║       • "help" - Show this menu                                      ║   
+║                                                                      ║   
+║     🔴 Say "exit" to quit                                            ║
+╚══════════════════════════════════════════════════════════════════════╝
 """
 
 

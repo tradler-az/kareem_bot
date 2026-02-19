@@ -147,14 +147,14 @@ class NeuralNetworkBrain:
             # Positive words
             'good': 0.5, 'great': 0.7, 'excellent': 0.8, 'amazing': 0.9,
             'wonderful': 0.8, 'fantastic': 0.8, 'love': 0.7, 'like': 0.3,
-            'happy': 0.6, 'joy': 0.7, 'pleased': 0.5, 'glad': 0.5,
+            'happy': 0.4, 'joy': 0.7, 'pleased': 0.5, 'glad': 0.5,
             'awesome': 0.8, 'cool': 0.4, 'nice': 0.4, 'perfect': 0.9,
             'best': 0.8, 'beautiful': 0.7, 'thank': 0.3, 'thanks': 0.3,
             'welcome': 0.2, 'excited': 0.7, 'fun': 0.5, 'enjoy': 0.5,
             
             # Negative words
             'bad': -0.5, 'terrible': -0.8, 'horrible': -0.8, 'awful': -0.7,
-            'hate': -0.8, 'dislike': -0.4, 'sad': -0.6, 'angry': -0.7,
+            'hate': -0.8, 'dislike': -0.4, 'sad': -0.7, 'angry': -0.7,
             'upset': -0.5, 'frustrated': -0.6, 'annoyed': -0.5, 'bored': -0.3,
             'tired': -0.3, 'sick': -0.5, 'wrong': -0.4, 'problem': -0.3,
             'issue': -0.3, 'error': -0.4, 'fail': -0.5, 'failed': -0.5,
