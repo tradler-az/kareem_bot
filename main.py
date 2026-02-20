@@ -136,6 +136,47 @@ except Exception as e:
     play_music = None
     stop_music = None
 
+# Import NEW feature modules
+try:
+    from bosco_os.capabilities.system.background_executor import get_background_executor
+    background_executor = get_background_executor()
+    print("[+] Background Executor loaded")
+except Exception as e:
+    print(f"[-] Background Executor: {e}")
+    background_executor = None
+
+try:
+    from bosco_os.capabilities.system.smart_launcher import get_smart_launcher
+    smart_launcher = get_smart_launcher()
+    print("[+] Smart Launcher loaded")
+except Exception as e:
+    print(f"[-] Smart Launcher: {e}")
+    smart_launcher = None
+
+try:
+    from bosco_os.capabilities.system.root_manager import get_root_manager
+    root_manager = get_root_manager()
+    print("[+] Root Manager loaded")
+except Exception as e:
+    print(f"[-] Root Manager: {e}")
+    root_manager = None
+
+try:
+    from bosco_os.capabilities.system.human_navigator import get_human_navigator
+    human_navigator = get_human_navigator()
+    print("[+] Human Navigator loaded")
+except Exception as e:
+    print(f"[-] Human Navigator: {e}")
+    human_navigator = None
+
+try:
+    from bosco_os.capabilities.system.project_builder import get_project_builder
+    project_builder = get_project_builder()
+    print("[+] Project Builder loaded")
+except Exception as e:
+    print(f"[-] Project Builder: {e}")
+    project_builder = None
+
 try:
     from bosco_os.brain.conversation_memory import get_conversation_memory
     conversation_memory = get_conversation_memory()
@@ -399,6 +440,243 @@ def process_command(cmd):
                 return url_scanner.quick_scan(target)
             return "What do you want to scan?"
         
+        # ========== NEW FEATURE: BACKGROUND EXECUTOR ==========
+        # Run commands in background
+        if 'run in background' in cmd or 'run background' in cmd:
+            command = cmd.replace('run in background', '').replace('run background', '').strip()
+            if command and background_executor:
+                return background_executor.execute_background(command, task_name=command[:30])
+            return "What command to run in background?"
+        
+        if 'background tasks' in cmd or 'list tasks' in cmd:
+            if background_executor:
+                return background_executor.list_tasks()
+            return "Background executor not available"
+        
+        if cmd.startswith('task status '):
+            task_id = cmd.replace('task status', '').strip()
+            if task_id and background_executor:
+                status = background_executor.get_task_status(task_id)
+                return f"Task: {status.get('name', 'Unknown')}\nStatus: {status.get('status', 'N/A')}\nOutput: {status.get('output', 'N/A')[:200]}"
+            return "Which task?"
+        
+        if cmd.startswith('cancel task '):
+            task_id = cmd.replace('cancel task', '').strip()
+            if task_id and background_executor:
+                return background_executor.cancel_task(task_id)
+            return "Which task to cancel?"
+        
+        # ========== NEW FEATURE: ROOT MANAGER ==========
+        # Sudo password handling
+        if 'cache sudo password' in cmd or 'set sudo password' in cmd:
+            return "Please provide your sudo password: say 'my sudo password is [password]'"
+        
+        if cmd.startswith('my sudo password is '):
+            password = cmd.replace('my sudo password is', '').strip()
+            if password and root_manager:
+                return root_manager.set_sudo_password(password)
+            return "No root manager available"
+        
+        if 'sudo' in cmd and root_manager:
+            # Extract command after 'sudo'
+            sudo_cmd = cmd.replace('sudo', '').strip()
+            if sudo_cmd:
+                return root_manager.run_as_root(sudo_cmd)
+        
+        if 'system update' in cmd or 'update system' in cmd:
+            if root_manager and root_manager.is_sudo_valid():
+                return "Running system update...\n" + root_manager.apt_update() + "\n" + root_manager.apt_upgrade()
+            return "Please cache your sudo password first. Say 'my sudo password is [your password]'"
+        
+        if 'restart service' in cmd:
+            service = cmd.replace('restart service', '').strip()
+            if service and root_manager:
+                return root_manager.restart_service(service)
+            return "Which service to restart?"
+        
+        if 'stop service' in cmd:
+            service = cmd.replace('stop service', '').strip()
+            if service and root_manager:
+                return root_manager.stop_service(service)
+            return "Which service to stop?"
+        
+        if 'ufw' in cmd:
+            if root_manager and root_manager.is_sudo_valid():
+                if 'status' in cmd:
+                    return root_manager.ufw_status()
+                if 'enable' in cmd:
+                    return root_manager.ufw_enable()
+                if 'disable' in cmd:
+                    return root_manager.ufw_disable()
+                if 'allow' in cmd:
+                    port = cmd.replace('ufw allow', '').strip()
+                    return root_manager.ufw_allow(port)
+            return "Please cache sudo password first"
+        
+        # ========== NEW FEATURE: SMART LAUNCHER ==========
+        # Smart app launching
+        if 'open' in cmd or 'launch' in cmd:
+            app_name = cmd.replace('open', '').replace('launch', '').strip()
+            if app_name and smart_launcher:
+                return smart_launcher.smart_launch(app_name, auto_install=True)
+            if app_name and open_app:
+                return open_app(app_name)
+            return "What to open?"
+        
+        if 'install' in cmd:
+            app_name = cmd.replace('install', '').strip()
+            if app_name and smart_launcher:
+                return smart_launcher.install_app(app_name)
+            if app_name and install_package:
+                return install_package(app_name)
+            return "What to install?"
+        
+        if 'search app' in cmd or 'find app' in cmd:
+            query = cmd.replace('search app', '').replace('find app', '').strip()
+            if query and smart_launcher:
+                return smart_launcher.search_for_app(query)
+            return "What app to search?"
+        
+        if 'list apps' in cmd or 'installed apps' in cmd:
+            if smart_launcher:
+                return smart_launcher.list_installed_apps()
+            if app_manager:
+                return app_manager.list_installed_apps(50)
+            return "No app manager available"
+        
+        # ========== NEW FEATURE: HUMAN NAVIGATOR ==========
+        # Mouse and keyboard control
+        if 'click' in cmd:
+            if human_navigator:
+                # Parse coordinates if provided
+                import re
+                coords = re.findall(r'\d+', cmd)
+                if len(coords) >= 2:
+                    return human_navigator.click(int(coords[0]), int(coords[1]))
+                return human_navigator.click()
+            return "Navigator not available"
+        
+        if 'double click' in cmd:
+            if human_navigator:
+                return human_navigator.double_click()
+            return "Navigator not available"
+        
+        if 'right click' in cmd:
+            if human_navigator:
+                return human_navigator.right_click()
+            return "Navigator not available"
+        
+        if 'scroll up' in cmd:
+            if human_navigator:
+                return human_navigator.scroll_up(3)
+            return "Navigator not available"
+        
+        if 'scroll down' in cmd:
+            if human_navigator:
+                return human_navigator.scroll_down(3)
+            return "Navigator not available"
+        
+        if 'type' in cmd and not 'type text' in cmd:
+            text = cmd.replace('type', '').strip()
+            if text and human_navigator:
+                return human_navigator.type_text(text)
+            return "What to type?"
+        
+        if 'press key' in cmd:
+            key = cmd.replace('press key', '').strip()
+            if key and human_navigator:
+                return human_navigator.press_key(key)
+            return "Which key?"
+        
+        if 'hotkey' in cmd or 'shortcut' in cmd:
+            keys = cmd.replace('hotkey', '').replace('shortcut', '').strip().split()
+            if keys and human_navigator:
+                return human_navigator.hotkey(*keys)
+            return "Which keys?"
+        
+        if 'open website' in cmd or 'go to' in cmd:
+            url = cmd.replace('open website', '').replace('go to', '').strip()
+            if url and human_navigator:
+                if not url.startswith('http'):
+                    url = 'https://' + url
+                return human_navigator.open_browser(url)
+            return "Which website?"
+        
+        if 'close window' in cmd:
+            if human_navigator:
+                return human_navigator.close_window()
+            return "Navigator not available"
+        
+        if 'minimize window' in cmd:
+            if human_navigator:
+                return human_navigator.minimize_window()
+            return "Navigator not available"
+        
+        if 'maximize window' in cmd:
+            if human_navigator:
+                return human_navigator.maximize_window()
+            return "Navigator not available"
+        
+        if 'switch window' in cmd or 'alt tab' in cmd:
+            if human_navigator:
+                return human_navigator.switch_window()
+            return "Navigator not available"
+        
+        # ========== NEW FEATURE: PROJECT BUILDER ==========
+        # Help build projects
+        if 'build project' in cmd or 'create project' in cmd or 'help me build' in cmd:
+            idea = cmd.replace('build project', '').replace('create project', '').replace('help me build', '').strip()
+            if idea and project_builder:
+                return project_builder.build_project(idea)
+            if project_builder:
+                return "What project do you want to build? Example: 'build project a machine learning app'"
+            return "Project builder not available"
+        
+        if 'analyze idea' in cmd:
+            idea = cmd.replace('analyze idea', '').strip()
+            if idea and project_builder:
+                analysis = project_builder.analyze_idea(idea)
+                return f"Suggested type: {analysis['project_name']}\nTech stack: {', '.join(analysis['tech_stack'])}"
+            return "What idea to analyze?"
+        
+        if cmd.startswith('create project '):
+            # Parse: create project [name] as [type]
+            parts = cmd.replace('create project', '').split(' as ')
+            name = parts[0].strip() if parts else ''
+            ptype = parts[1].strip() if len(parts) > 1 else 'web_app'
+            if name and project_builder:
+                return project_builder.create_project(name, ptype)
+            return "Usage: create project [name] as [web_app/mobile_app/api/cli_tool/etc]"
+        
+        if 'project structure' in cmd:
+            ptype = cmd.replace('project structure', '').strip()
+            if project_builder:
+                return project_builder.generate_project_structure(ptype or 'web_app', 'example')
+            return "Project builder not available"
+        
+        if 'learning path' in cmd or 'how to learn' in cmd:
+            # Extract project type from command
+            for ptype in ['web_app', 'mobile_app', 'api', 'machine_learning', 'game', 'cli_tool']:
+                if ptype.replace('_', ' ') in cmd:
+                    if project_builder:
+                        path = project_builder.get_learning_path(ptype)
+                        result = f"Learning path for {ptype}:\n\n"
+                        for item in path:
+                            result += f"Week {item['step']}: {item['topic']} ({item['duration']})\n"
+                        return result
+            return "Which project type? Example: 'learning path for web development'"
+        
+        if 'documentation' in cmd and 'project' in cmd:
+            for ptype in ['web_app', 'mobile_app', 'api', 'machine_learning']:
+                if ptype.replace('_', ' ') in cmd:
+                    if project_builder:
+                        docs = project_builder.get_documentation_links(ptype)
+                        result = f"Documentation for {ptype}:\n\n"
+                        for name, url in docs.items():
+                            result += f"• {name}: {url}\n"
+                        return result
+            return "Which project type?"
+        
         # NEW: App listing
         if cmd in ['list apps', 'show apps', 'all apps']:
             if app_manager:
@@ -579,103 +857,161 @@ Be helpful and execute user requests!"""
 
 def get_help_text():
     return f"""
-╔════════════ {AI_NAME} Full Control + Kali Linux Commands ════════════╗
-║                                                                      ║
-║     🖥️ TERMINAL:                                                     ║
-║       • "run [command]" - Execute terminal command                   ║
-║       • "open terminal" - Open terminal app                          ║
-║                                                                      ║
-║     🌐 WEB:                                                          ║
-║       • "search [query]" - Search the web                            ║
-║       • "wikipedia [topic]" - Get Wikipedia info                     ║
-║       • "weather" - Check weather                                    ║
-║       • "news" - Latest news                                         ║
-║                                                                      ║
-║     📂 FILES:                                                        ║
-║       • "list files [path]" - List directory                         ║
-║       • "find file [name]" - Search for files                        ║
-║       • "read file [path]" - Read file content                       ║
-║       • "delete file [path]" - Delete a file                         ║
-║       • "create file [name] with [content]" - Create file            ║
-║                                                                      ║
-║     📱 APPS:                                                         ║
-║       • "open [app]" - Open application                              ║
-║       • "close [app]" - Close application                            ║
-║                                                                      ║
-║     💻 SYSTEM:                                                       ║
-║       • "system info" - Full system information                      ║
-║       • "processes" / "list processes" - Running processes           ║
-║       • "screenshot" - Take screenshot                               ║
-║       • "cpu" / "memory" / "disk" - Quick stats                      ║
-║                                                                      ║
-║     ⌨️ INPUT:                                                        ║
-║       • "type [text]" - Type text                                    ║
-║       • "press [key]" - Press a key                                  ║
-║       • "click" - Mouse click                                        ║
-║                                                                      ║
-║     📋 CLIPBOARD:                                                    ║
-║       • "clipboard" - Show clipboard                                 ║
-║       • "copy [text]" - Copy to clipboard                            ║
-║                                                                      ║
-║     📦 SYSTEM MAINTENANCE:                                           ║
-║       • "install [package]" - Install package (needs sudo)           ║
-║       • "update" - Update system (apt update)                        ║
-║       • "git clone [url]" - Clone repository                         ║
-║       • "download [url]" - Download file                             ║
-║                                                                      ║
-║  ═══════════════════════ KALI LINUX SPECIFIC ═══════════════════════ ║
-║                                                                      ║
-║     🛠️ PROCESS MANAGEMENT:                                           ║   
-║       • "list processes" - Show top processes                        ║   
-║       • "find process [name]" - Find process by name                 ║   
-║       • "kill process [PID]" - Kill a process                        ║   
-║                                                                      ║   
-║     🌐 NETWORK OPERATIONS:                                           ║   
-║       • "network status" / "check network" - Network config          ║   
-║       • "listening ports" / "check ports" - Show open ports          ║   
-║       • "connections" - Show active connections                      ║   
-║       • "nmap scan [target]" - Run nmap scan                         ║   
-║                                                                      ║   
-║     ⚙️ SERVICES:                                                     ║   
-║       • "list services" - Show running services                      ║   
-║       • "service status [name]" - Check service status               ║   
-║       • "start service [name]" - Start a service                     ║   
-║       • "stop service [name]" - Stop a service                       ║   
-║                                                                      ║   
-║     📦 PACKAGE MANAGEMENT:                                           ║   
-║       • "check package [name]" - Check if package installed          ║   
-║       • "list packages" - List installed packages                    ║   
-║       • "apt update" - Update package lists                          ║   
-║       • "apt upgrade" - Upgrade system                               ║   
-║                                                                      ║   
-║     🛡️ SECURITY & FIREWALL:                                          ║   
-║       • "check iptables" - Show iptables rules                       ║   
-║       • "ufw status" - Show UFW status                               ║   
-║       • "check root" - Check if running as root                      ║   
-║       • "kali tools" - Check installed Kali tools                    ║   
-║                                                                      ║   
-║     📝 LOGS & ANALYSIS:                                              ║   
-║       • "system logs" / "logs" - Show system logs                    ║   
-║       • "auth logs" - Show authentication logs                       ║   
-║       • "dmesg" / "kernel logs" - Show kernel messages               ║   
-║                                                                      ║   
-║     👥 USER MANAGEMENT:                                              ║   
-║       • "list users" - Show system users                             ║   
-║       • "list groups" - Show system groups                           ║   
-║                                                                      ║   
-║     💾 DISK & FILES:                                                 ║   
-║       • "disk usage" - Show disk space                               ║   
-║       • "mounts" - Show mount points                                 ║   
-║       • "find large files" - Find big files                          ║   
-║       • "file info [path]" - Show file permissions                   ║   
-║                                                                      ║   
-║     💬 CONVERSATION:                                                 ║   
-║       • Just talk naturally!                                         ║   
-║       • "joke" - Tell a joke                                         ║   
-║       • "help" - Show this menu                                      ║   
-║                                                                      ║   
-║     🔴 Say "exit" to quit                                            ║
-╚══════════════════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════════════════╗
+║                  {AI_NAME} Full Control + Kali Linux Commands              ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+┌────────────────────────────────────────────────────────────────────────┐
+│ 🖥️ TERMINAL:                                                          │
+│   • "run [command]" - Execute terminal command                         │
+│   • "open terminal" - Open terminal app                                │
+│   • "run background [command]" - Run command in background            │
+│   • "background tasks" - List running background tasks                 │
+└────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│ 🌐 WEB:                                                                │
+│   • "search [query]" - Search the web                                  │
+│   • "wikipedia [topic]" - Get Wikipedia info                           │
+│   • "weather" - Check weather                                         │
+│   • "news" - Latest news                                              │
+│   • "open website [url]" - Open website in browser                     │
+└────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│ 📂 FILES:                                                              │
+│   • "list files [path]" - List directory                              │
+│   • "find file [name]" - Search for files                             │
+│   • "read file [path]" - Read file content                            │
+│   • "delete file [path]" - Delete a file                              │
+│   • "create file [name] with [content]" - Create file                 │
+└────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│ 📱 APP LAUNCHER (Smart):                                              │
+│   • "open [app]" - Open app, install if not found                     │
+│   • "install [app]" - Install application                              │
+│   • "search app [name]" - Search for app                              │
+│   • "list apps" - List installed applications                          │
+└────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│ 💻 SYSTEM:                                                             │
+│   • "system info" - Full system information                           │
+│   • "processes" / "list processes" - Running processes               │
+│   • "screenshot" - Take screenshot                                   │
+│   • "cpu" / "memory" / "disk" - Quick stats                         │
+└────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│ ⌨️ INPUT (Human-like Navigation):                                     │
+│   • "click" - Mouse click                                            │
+│   • "click [x] [y]" - Click at coordinates                           │
+│   • "double click" - Double click                                     │
+│   • "right click" - Right click                                       │
+│   • "scroll up/down" - Scroll                                         │
+│   • "type [text]" - Type text                                        │
+│   • "press key [key]" - Press a key                                   │
+│   • "hotkey [keys]" - Press hotkey (e.g., ctrl c)                    │
+│   • "close/minimize/maximize window" - Window control                │
+│   • "switch window" - Alt+Tab                                         │
+└────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│ 📋 CLIPBOARD:                                                          │
+│   • "clipboard" - Show clipboard                                      │
+│   • "copy [text]" - Copy to clipboard                                 │
+└────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│ 🔐 ROOT / SUDO (Full System Control):                                  │
+│   • "cache sudo password" - Cache sudo password                      │
+│   • "my sudo password is [password]" - Set sudo password             │
+│   • "sudo [command]" - Run command as sudo                           │
+│   • "system update" - Update system (apt update && upgrade)          │
+│   • "restart service [name]" - Restart system service                 │
+│   • "stop service [name]" - Stop system service                      │
+│   • "ufw status/enable/disable" - Firewall control                   │
+│   • "ufw allow [port]" - Allow port in firewall                      │
+└────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│ 📦 SYSTEM MAINTENANCE:                                                 │
+│   • "install [package]" - Install package (needs sudo)                │
+│   • "update" - Update system (apt update)                            │
+│   • "git clone [url]" - Clone repository                              │
+│   • "download [url]" - Download file                                  │
+└────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│ 🚀 PROJECT BUILDER:                                                    │
+│   • "build project [idea]" - Get full project guide                   │
+│   • "create project [name] as [type]" - Create project structure    │
+│   • "analyze idea [description]" - Analyze project idea              │
+│   • "learning path [type]" - Get learning path                        │
+│   • "project structure [type]" - Show project structure               │
+│   • "documentation [type]" - Get documentation links                   │
+│                                                                        │
+│   Project types: web_app, mobile_app, api, cli_tool,                   │
+│                 machine_learning, game, automation, iot, desktop_app   │
+└────────────────────────────────────────────────────────────────────────┘
+
+  ═══════════════════════════ KALI LINUX SPECIFIC ═══════════════════════
+
+┌────────────────────────────────────────────────────────────────────────┐
+│ 🛠️ PROCESS MANAGEMENT:                                                │
+│   • "list processes" - Show top processes                             │
+│   • "find process [name]" - Find process by name                     │
+│   • "kill process [PID]" - Kill a process                             │
+└────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│ 🌐 NETWORK OPERATIONS:                                                 │
+│   • "network status" / "check network" - Network config               │
+│   • "listening ports" / "check ports" - Show open ports               │
+│   • "connections" - Show active connections                           │
+│   • "nmap scan [target]" - Run nmap scan                             │
+└────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│ ⚙️ SERVICES:                                                          │
+│   • "list services" - Show running services                           │
+│   • "service status [name]" - Check service status                    │
+│   • "start service [name]" - Start a service                         │
+│   • "stop service [name]" - Stop a service                           │
+└────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│ 📦 PACKAGE MANAGEMENT:                                                │
+│   • "check package [name]" - Check if package installed               │
+│   • "list packages" - List installed packages                         │
+│   • "apt update" - Update package lists                              │
+│   • "apt upgrade" - Upgrade system                                   │
+└────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│ 🛡️ SECURITY & FIREWALL:                                               │
+│   • "check iptables" - Show iptables rules                            │
+│   • "ufw status" - Show UFW status                                  │
+│   • "check root" - Check if running as root                          │
+│   • "kali tools" - Check installed Kali tools                        │
+└────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│ 📝 LOGS & ANALYSIS:                                                   │
+│   • "system logs" / "logs" - Show system logs                         │
+│   • "auth logs" - Show authentication logs                           │
+│   • "dmesg" / "kernel logs" - Show kernel messages                   │
+└────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│ 💬 CONVERSATION:                                                      │
+│   • Just talk naturally!                                              │
+│   • "joke" - Tell a joke                                             │
+│   • "help" - Show this menu                                          │
+└────────────────────────────────────────────────────────────────────────┘
+
+🔴 Say "exit" to quit
 """
 
 
