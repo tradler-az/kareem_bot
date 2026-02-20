@@ -10,9 +10,9 @@
 
 Bosco Core is an advanced AI assistant with neural brain capabilities, multi-agent orchestration, semantic memory, full PC control, and Kali Linux support. It combines machine learning for natural conversation with powerful system automation features and specialized AI agents.
 
-## ✨ Features
+## Features
 
-### 🧠 Neural Brain
+### Neural Brain
 - ML-powered intent recognition
 - Learning from conversations
 - Predictive responses
@@ -20,7 +20,7 @@ Bosco Core is an advanced AI assistant with neural brain capabilities, multi-age
 - **NEW**: Vector memory with semantic search (RAG)
 - **NEW**: Local embeddings with ChromaDB
 
-### 🤖 Multi-Agent Orchestration
+### Multi-Agent Orchestration
 - **NEW**: Specialized AI agents that collaborate
 - **Security Agent**: Penetration testing, vulnerability scanning, exploit research
 - **DevOps Agent**: Docker/Kubernetes management, deployments, monitoring
@@ -28,7 +28,44 @@ Bosco Core is an advanced AI assistant with neural brain capabilities, multi-age
 - **Orchestrator**: Coordinates complex multi-step workflows
 - Predefined workflows: Pentest, Infrastructure Audit, Research & Analysis
 
-### 💻 Full PC Control
+### Smart App Launcher (NEW)
+- Opens apps if they exist on the system
+- Automatically installs apps if not found (apt, snap, flatpak, pip, npm)
+- Large database of known applications (browsers, dev tools, media, games)
+- Search and list installed applications
+
+### Background Executor (NEW)
+- Run commands in background without blocking
+- Auto-handle sudo password prompts when cached
+- Track and manage background tasks
+- Progress callbacks for long-running operations
+
+### Root Manager (NEW)
+- Cache sudo password for session
+- Run any command with sudo privileges
+- System operations: apt update/upgrade, services, firewall (UFW)
+- Full root permission handling
+
+### Human-like Navigation (NEW)
+- Human-like mouse control (click, double-click, right-click, drag)
+- Keyboard control (type, press keys, hotkeys)
+- Scroll operations
+- Window management (close, minimize, maximize, switch)
+- Web browser control
+
+### Project Builder (NEW)
+- Analyze project ideas and suggest project types
+- Generate complete project guides with:
+  - Tech stack recommendations
+  - Step-by-step instructions
+  - Learning paths
+  - Documentation links
+  - Online resources
+  - Project folder structures
+- Create project files automatically
+- Support for: web_app, mobile_app, api, cli_tool, machine_learning, game, automation, iot, desktop_app
+
+### Full PC Control
 - Execute terminal commands
 - Open/close applications
 - File management (read, write, delete, search)
@@ -37,13 +74,13 @@ Bosco Core is an advanced AI assistant with neural brain capabilities, multi-age
 - Clipboard management
 - Keyboard/mouse automation
 
-### 🌐 Web Capabilities
+### Web Capabilities
 - Web search
 - Wikipedia queries
 - URL browsing
 - File downloads
 
-### 🛡️ Kali Linux Support
+### Kali Linux Support
 - Process management
 - Network operations & port scanning
 - Service management
@@ -54,12 +91,12 @@ Bosco Core is an advanced AI assistant with neural brain capabilities, multi-age
 - Kali tools integration
 - **NEW**: Autonomous pentesting workflows
 
-### 🎤 Voice I/O
+### Voice I/O
 - Voice recognition (SpeechRecognition)
 - Text-to-speech (pyttsx3, gTTS, espeak)
 - Sound effects
 
-### 🔒 Real-Time Threat Detection
+### Real-Time Threat Detection
 - **NEW**: Continuous security monitoring
 - Log analysis for suspicious patterns
 - Process scanning for malware indicators
@@ -67,7 +104,7 @@ Bosco Core is an advanced AI assistant with neural brain capabilities, multi-age
 - Threat alerts and notifications
 - Pattern-based detection with customizable rules
 
-### 🆙 Self-Update & Auto-Upgrade System
+### Self-Update & Auto-Upgrade System
 - **NEW**: Check for updates from PyPI/GitHub
 - **NEW**: Auto-install missing dependencies
 - **NEW**: Automatic backup before updates
@@ -75,14 +112,14 @@ Bosco Core is an advanced AI assistant with neural brain capabilities, multi-age
 - **NEW**: Learn and improve from interactions
 - **NEW**: Continuous learning engine
 
-### 👁️ Computer Vision & Screen Understanding
+### Computer Vision & Screen Understanding
 - **NEW**: Screen capture with multiple backends (MSS, PIL)
 - **NEW**: OCR text detection (Tesseract)
 - **NEW**: Visual element detection (buttons, text fields)
 - **NEW**: Window management
 - Screenshot capture and analysis
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
@@ -109,7 +146,7 @@ pip install -r requirements.txt
 python3 main.py
 ```
 
-## 📋 Requirements
+## Requirements
 
 ```
 speech_recognition>=3.8.0
@@ -140,7 +177,66 @@ pillow>=8.0.0
 | Command | Description |
 |---------|-------------|
 | `run [command]` | Execute terminal command |
+| `run background [command]` | Execute in background |
+| `background tasks` | List running tasks |
 | `open terminal` | Open terminal app |
+
+### Smart App Launcher
+| Command | Description |
+|---------|-------------|
+| `open [app]` | Open app, install if not found |
+| `install [app]` | Install application |
+| `search app [name]` | Search for app |
+| `list apps` | List installed apps |
+
+### ⚡ Background Execution
+| Command | Description |
+|---------|-------------|
+| `run background [command]` | Run command in background |
+| `background tasks` | List running tasks |
+| `task status [id]` | Check task status |
+| `cancel task [id]` | Cancel a task |
+
+### Root / Sudo
+| Command | Description |
+|---------|-------------|
+| `cache sudo password` | Start sudo caching |
+| `my sudo password is [password]` | Set sudo password |
+| `sudo [command]` | Run command as sudo |
+| `system update` | Full system update |
+| `restart service [name]` | Restart service |
+| `stop service [name]` | Stop service |
+| `ufw status/enable/disable` | Firewall control |
+| `ufw allow [port]` | Allow port |
+
+### 🌐 Human-like Navigation
+| Command | Description |
+|---------|-------------|
+| `click` | Mouse click |
+| `click [x] [y]` | Click at coordinates |
+| `double click` | Double click |
+| `right click` | Right click |
+| `scroll up/down` | Scroll |
+| `type [text]` | Type text |
+| `press key [key]` | Press a key |
+| `hotkey [keys]` | Press hotkey |
+| `close window` | Close window (Alt+F4) |
+| `minimize window` | Minimize window |
+| `maximize window` | Maximize window |
+| `switch window` | Alt+Tab |
+| `open website [url]` | Open website |
+
+### Project Builder
+| Command | Description |
+|---------|-------------|
+| `build project [idea]` | Get full project guide |
+| `create project [name] as [type]` | Create project |
+| `analyze idea [description]` | Analyze idea |
+| `learning path [type]` | Learning roadmap |
+| `project structure [type]` | Show structure |
+| `documentation [type]` | Get docs |
+
+Project types: web_app, mobile_app, api, cli_tool, machine_learning, game, automation, iot, desktop_app
 
 ### Files
 | Command | Description |
@@ -194,7 +290,7 @@ pillow>=8.0.0
 | `check iptables` | Firewall rules |
 | `system logs` | System logs |
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 bosco-core/
@@ -236,7 +332,15 @@ bosco-core/
 │   │   │   ├── kali_control.py    # Kali features
 │   │   │   ├── pc_control.py
 │   │   │   ├── control.py
-│   │   │   └── enhanced_automation.py
+│   │   │   ├── enhanced_automation.py
+│   │   │   ├── background_executor.py    # NEW: Background execution
+│   │   │   ├── smart_launcher.py         # NEW: Smart app launcher
+│   │   │   ├── root_manager.py            # NEW: Root/sudo management
+│   │   │   ├── human_navigator.py         # NEW: Human-like navigation
+│   │   │   ├── project_builder.py         # NEW: Project builder
+│   │   │   ├── app_manager.py
+│   │   │   ├── music_player.py
+│   │   │   └── kali_control.py
 │   │   ├── security/
 │   │   │   └── threat_detector.py  # NEW: Threat detection
 │   │   ├── multi_device.py
@@ -302,7 +406,7 @@ bosco-core/
     └── history.log
 ```
 
-## 🔧 New Capabilities Usage
+## New Capabilities Usage
 
 ### Multi-Agent System
 
@@ -447,7 +551,122 @@ learning.record_interaction(
 )
 ```
 
-## ⚙️ Configuration
+### Smart App Launcher
+
+```python
+from bosco_os.capabilities.system.smart_launcher import get_smart_launcher
+
+launcher = get_smart_launcher()
+
+# Smart launch - opens if installed, installs if not
+result = launcher.smart_launch("vscode", auto_install=True)
+
+# Search for apps
+result = launcher.search_for_app("chrome")
+
+# List installed apps
+result = launcher.list_installed_apps()
+
+# Install specific app
+result = launcher.install_app("firefox", method="apt")
+```
+
+### ⚡ Background Executor
+
+```python
+from bosco_os.capabilities.system.background_executor import get_background_executor
+
+executor = get_background_executor()
+
+# Run command in background
+result = executor.execute_background(
+    "apt update && apt upgrade -y",
+    use_sudo=True,
+    task_name="system-upgrade"
+)
+
+# List background tasks
+result = executor.list_tasks()
+
+# Get task status
+status = executor.get_task_status("task_1")
+
+# Cancel task
+result = executor.cancel_task("task_1")
+```
+
+### Root Manager
+
+```python
+from bosco_os.capabilities.system.root_manager import get_root_manager
+
+root_mgr = get_root_manager()
+
+# Cache sudo password
+result = root_mgr.set_sudo_password("your_password")
+
+# Check if sudo is valid
+if root_mgr.is_sudo_valid():
+    # Run commands with sudo
+    result = root_mgr.apt_update()
+    result = root_mgr.apt_upgrade()
+    result = root_mgr.restart_service("nginx")
+    result = root_mgr.ufw_allow("80")
+```
+
+### Human-like Navigator
+
+```python
+from bosco_os.capabilities.system.human_navigator import get_human_navigator
+
+navigator = get_human_navigator()
+
+# Mouse control
+navigator.click(100, 200)  # Click at coordinates
+navigator.double_click()
+navigator.right_click()
+navigator.scroll_up(3)
+navigator.scroll_down(3)
+
+# Keyboard control
+navigator.type_text("Hello world!")
+navigator.press_key("enter")
+navigator.hotkey("ctrl", "c")  # Copy
+
+# Window control
+navigator.close_window()
+navigator.minimize_window()
+navigator.maximize_window()
+navigator.switch_window()
+
+# Browser control
+navigator.open_browser("https://google.com")
+```
+
+### Project Builder
+
+```python
+from bosco_os.capabilities.system.project_builder import get_project_builder
+
+builder = get_project_builder()
+
+# Build complete project guide from idea
+result = builder.build_project("I want to build a machine learning app")
+
+# Analyze idea
+analysis = builder.analyze_idea("build a web app with react")
+
+# Create project files
+result = builder.create_project("my-app", "web_app")
+
+# Get learning path
+path = builder.get_learning_path("machine_learning")
+
+# Get documentation links
+docs = builder.get_documentation_links("web_app")
+```
+
+## Configuration
 
 Edit `config.json`:
 
@@ -472,7 +691,7 @@ Edit `config.json`:
 }
 ```
 
-## 🎤 Voice Commands
+## Voice Commands
 
 Bosco supports voice input and output:
 
@@ -484,7 +703,7 @@ cmd = listen()  # Uses speech_recognition
 speak("Hello!")  # Uses pyttsx3 or espeak
 ```
 
-## 🔧 Audio Troubleshooting
+## Audio Troubleshooting
 
 If you see ALSA/JACK warnings, use the clean runner:
 
@@ -499,7 +718,7 @@ This suppresses:
 
 These warnings are harmless and appear because ALSA probes for multichannel audio devices that don't exist on modern laptops.
 
-## 🧪 Testing
+## Testing
 
 ### Run All Tests
 
@@ -530,7 +749,7 @@ The test suite checks:
 
 The test provides a **System Health Score** and suggests fixes for any issues found.
 
-## 🤖 Neural Brain
+## Neural Brain
 
 The neural brain provides:
 
@@ -549,7 +768,7 @@ brain.learn("search python", "search")
 brain.learn("find information about python", "search")
 ```
 
-## 🛡️ Kali Integration
+## Kali Integration
 
 Bosco detects if running on Kali Linux and enables:
 
@@ -560,15 +779,15 @@ Bosco detects if running on Kali Linux and enables:
 - Service management
 - Log analysis
 
-## 📝 License
+## License
 
 MIT License
 
-## 👤 Author
+## Author
 
-Created by [Your Name]
+Created by Bosco Emusolo
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - SpeechRecognition library
 - pyttsx3 for TTS
