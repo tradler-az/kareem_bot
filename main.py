@@ -123,6 +123,19 @@ except Exception as e:
     print(f"[-] App Manager: {e}")
     app_manager = None
 
+# Import Music Player
+try:
+    from bosco_os.capabilities.system.music_player import (
+        get_music_player, play_music, stop_music, 
+        pause_music, resume_music, music_status
+    )
+    music_player = get_music_player()
+    print("[+] Music Player loaded")
+except Exception as e:
+    print(f"[-] Music Player: {e}")
+    play_music = None
+    stop_music = None
+
 try:
     from bosco_os.brain.conversation_memory import get_conversation_memory
     conversation_memory = get_conversation_memory()
@@ -460,6 +473,36 @@ def process_command(cmd):
                 return get_kali_personality().get_joke()
             from bosco_os.brain.neural_brain import NormalHumanPersonality
             return NormalHumanPersonality().get_joke()
+        
+        # MUSIC COMMANDS
+        if 'play' in cmd or 'music' in cmd or 'song' in cmd:
+            # Handle play music commands
+            if play_music:
+                # Parse the command to extract song and artist
+                parsed = music_player.parse_song_command(cmd)
+                song = parsed.get('song', '')
+                artist = parsed.get('artist', '')
+                
+                if song:
+                    return play_music(song, artist)
+            else:
+                return "Music player not available. Please install yt-dlp."
+        
+        if 'stop' in cmd and 'music' in cmd:
+            if stop_music:
+                return stop_music()
+        
+        if 'pause' in cmd and 'music' in cmd:
+            if pause_music:
+                return pause_music()
+        
+        if 'resume' in cmd or 'continue' in cmd:
+            if resume_music:
+                return resume_music()
+        
+        if 'now playing' in cmd or 'what song' in cmd:
+            if music_status:
+                return music_status()
         
         # Return neural brain response for conversation
         # Use Kali personality if available

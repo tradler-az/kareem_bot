@@ -499,6 +499,37 @@ This suppresses:
 
 These warnings are harmless and appear because ALSA probes for multichannel audio devices that don't exist on modern laptops.
 
+## 🧪 Testing
+
+### Run All Tests
+
+```bash
+# Run the comprehensive test suite (project + system diagnostics)
+python test_all.py
+```
+
+The test suite checks:
+
+#### Project Tests
+- Core module imports
+- Neural brain functionality
+- Online services (weather, search, Wikipedia)
+- System info (CPU, memory, storage)
+- Advanced features (Vector Memory, Multi-Agent, MCP Server, etc.)
+- Kali Linux integration
+
+#### System Diagnostics (NEW)
+- **Audio System**: ALSA, PulseAudio, audio devices
+- **Network Connectivity**: Internet connection, DNS
+- **Dependencies**: Required and optional packages
+- **File System**: Critical directories, permissions
+- **Running Services**: Bosco processes
+- **Display/Graphics**: DISPLAY variable, X11
+- **Python Environment**: Version, pip, module imports
+- **Log Files**: Size and permissions
+
+The test provides a **System Health Score** and suggests fixes for any issues found.
+
 ## 🤖 Neural Brain
 
 The neural brain provides:
